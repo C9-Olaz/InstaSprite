@@ -20,12 +20,16 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.BottomAppBar
+import androidx.compose.material3.DrawerState
+import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -37,14 +41,18 @@ import androidx.compose.ui.unit.dp
 import com.olaz.instasprite.R
 import com.olaz.instasprite.ui.theme.CatppuccinUI
 import com.olaz.instasprite.utils.rememberBottomBarVisibleState
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeBottomBar(
     viewModel: HomeScreenViewModel,
     lazyListState: LazyListState,
+    drawerState: DrawerState,
     modifier: Modifier = Modifier
 ) {
+    val scope = rememberCoroutineScope()
+
     val isBottomBarVisible by rememberBottomBarVisibleState(lazyListState)
     AnimatedVisibility(
         visible = isBottomBarVisible,
@@ -69,7 +77,13 @@ fun HomeBottomBar(
                 BottomBarItem(
                     imageVector = Icons.Default.Menu,
                     onClick = {
-                        // TODO
+                        scope.launch {
+                            if (drawerState.isClosed) {
+                                drawerState.open()
+                            } else {
+                                drawerState.close()
+                            }
+                        }
                     },
                     iconTint = CatppuccinUI.TextColorLight
                 )
@@ -171,3 +185,4 @@ fun HomeFab(
         }
     }
 }
+

@@ -68,6 +68,7 @@ dependencies {
     // --- Persistence / Storage ---
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
+    implementation(libs.androidx.compose.material3)
     ksp(libs.androidx.room.compiler)
     implementation(libs.annotations) // Javax Annotations (used by Room, etc.)
 
