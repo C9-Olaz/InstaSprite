@@ -1,17 +1,13 @@
 package com.olaz.instasprite.ui.screens.homescreen
 
 import android.content.Intent
-import android.util.Log
-import android.util.MutableBoolean
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.snapping.SnapPosition
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -32,8 +28,6 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -58,7 +52,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextAlign.Companion.Center
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -74,6 +67,7 @@ import com.olaz.instasprite.ui.theme.CatppuccinUI
 import com.olaz.instasprite.ui.theme.InstaSpriteTheme
 import com.olaz.instasprite.utils.UiUtils
 import com.olaz.instasprite.R
+import com.olaz.instasprite.ProfileActivity
 
 @Composable
 fun HomeScreen(viewModel: HomeScreenViewModel) {
@@ -124,7 +118,8 @@ fun HomeScreen(viewModel: HomeScreenViewModel) {
         ModalNavigationDrawer(
             drawerContent = {
                 ModalDrawerSheet (
-                    drawerContainerColor = CatppuccinUI.TopBarColor
+                    drawerContainerColor = CatppuccinUI.TopBarColor,
+                    modifier = Modifier.fillMaxWidth(0.9f)
                 ){
                     Column(
                         modifier = Modifier.padding(horizontal = 16.dp)
@@ -136,24 +131,8 @@ fun HomeScreen(viewModel: HomeScreenViewModel) {
                                 tint = Color.Unspecified,
                                 modifier = Modifier
                                     .padding(16.dp)
-                                    .size(50.dp)
+                                    .size(30.dp)
                             )
-                            Column(
-                            ) {
-                                Text(
-                                    fontSize = 16.sp,
-                                    text = "InstaSprite",
-                                    modifier = Modifier
-                                        .padding(start = 16.dp, bottom = 8.dp, top = 8.dp)
-                                )
-                                Text(
-                                    fontSize = 12.sp,
-                                    text = "Create and explore arts !",
-                                    modifier = Modifier
-                                        .padding(start = 16.dp)
-
-                                )
-                            }
                         }
                         HorizontalDivider(
                             color = Color.Transparent,
@@ -208,7 +187,10 @@ fun HomeScreen(viewModel: HomeScreenViewModel) {
                                     }
                                 },
                                 selected = false,
-                                onClick = { /* Handle click */ }
+                                onClick = {
+                                    val intent = Intent(context, ProfileActivity::class.java)
+                                    context.startActivity(intent)
+                                }
                             )
                         }
 
@@ -258,24 +240,6 @@ fun HomeScreen(viewModel: HomeScreenViewModel) {
                             label = {
                                 Row {
                                     Icon(
-                                        imageVector = Icons.Default.Create,
-                                        contentDescription = "Gallery",
-                                        tint = CatppuccinUI.TextColorLight,
-                                        modifier = Modifier
-                                            .padding(top = 6.dp)
-                                            .size(20.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text("Gallery")
-                                }
-                            },
-                            selected = false,
-                            onClick = { /* Handle click */ }
-                        )
-                        NavigationDrawerItem(
-                            label = {
-                                Row {
-                                    Icon(
                                         imageVector = Icons.Default.Settings,
                                         contentDescription = "Setting",
                                         tint = CatppuccinUI.TextColorLight,
@@ -315,7 +279,7 @@ fun HomeScreen(viewModel: HomeScreenViewModel) {
                                 }
                             },
                             selected = false,
-                            onClick = { /* Handle click */ }
+                            onClick = { loginState = !loginState }
                         )
 
                         // Logout item (only show when logged in)
@@ -359,6 +323,14 @@ fun HomeScreen(viewModel: HomeScreenViewModel) {
                     ) {
                         Text(
                             text = "Home",
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(10.dp)
+                        )
+
+                        Text(
+                            text = "Gallery",
                             textAlign = TextAlign.Center,
                             modifier = Modifier
                                 .weight(1f)
