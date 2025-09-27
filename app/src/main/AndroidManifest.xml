@@ -30,7 +30,12 @@
             android:label="InstaSprite"
             android:theme="@style/Theme.InstaSprite" />
 
-        <activity android:name="ProfileActivity"
+        <activity android:name=".ProfileActivity"
+            android:exported="true"
+            android:label="InstaSprite"
+            android:theme="@style/Theme.InstaSprite"/>
+
+        <activity android:name=".PostActivity"
             android:exported="true"
             android:label="InstaSprite"
             android:theme="@style/Theme.InstaSprite"/>

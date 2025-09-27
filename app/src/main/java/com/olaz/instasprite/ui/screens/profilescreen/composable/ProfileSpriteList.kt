@@ -1,6 +1,5 @@
-package com.olaz.instasprite.ui.screens.profilescreen
+package com.olaz.instasprite.ui.screens.profilescreen.composable
 
-import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
@@ -23,7 +22,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
@@ -32,11 +30,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,56 +46,22 @@ import com.olaz.instasprite.data.model.ISpriteData
 import com.olaz.instasprite.data.model.ISpriteWithMetaData
 import com.olaz.instasprite.data.model.SpriteMetaData
 import com.olaz.instasprite.ui.components.composable.CanvasPreviewer
-import com.olaz.instasprite.ui.screens.homescreen.SpriteListOrder
 import com.olaz.instasprite.ui.screens.homescreen.dialog.DeleteSpriteConfirmDialog
-import com.olaz.instasprite.ui.screens.homescreen.dialog.RenameDialog
-import com.olaz.instasprite.ui.screens.profilescreen.dialog.RenameDialog
 import com.olaz.instasprite.ui.theme.CatppuccinUI
-import kotlinx.coroutines.launch
-
 
 @Composable
 fun SpriteList(
-    viewModel: ProfileScreenViewModel,
     spritesWithMetaData: List<ISpriteWithMetaData>,
     modifier: Modifier = Modifier,
     lazyListState: LazyListState = rememberLazyListState(),
-    headerContent: (@Composable () -> Unit)? = null, // Add header content parameter
+    headerContent: (@Composable () -> Unit)? = null,
+    onSpriteClick: (ISpriteData) -> Unit = {},
+    onSpriteEdit: (ISpriteData) -> Unit = {},
+    onSpriteDelete: (String) -> Unit = {}
 ) {
     // Only sort by latest (last modified) - no sorting options in profile
     val sortedSprites = remember(spritesWithMetaData) {
         spritesWithMetaData.sortedByDescending { it.meta?.lastModifiedAt ?: 0L }
-    }
-    viewModel.spriteList = sortedSprites
-
-    val coroutineScope = rememberCoroutineScope()
-
-    LaunchedEffect(spritesWithMetaData, sortedSprites) {
-        viewModel.lastEditedSpriteId?.let { editedId ->
-            val index = sortedSprites.indexOfFirst { it.sprite.id == editedId }
-            if (index != -1) {
-                // Add 1 to account for header if it exists
-                val scrollIndex = if (headerContent != null) index + 1 else index
-                coroutineScope.launch {
-                    lazyListState.animateScrollToItem(scrollIndex)
-                }
-            }
-        }
-        viewModel.lastEditedSpriteId = null
-    }
-
-    LaunchedEffect(viewModel.lastSpriteSeenInPager) {
-        viewModel.lastSpriteSeenInPager?.let { sprite ->
-            val index = sortedSprites.indexOfFirst { it.sprite.id == sprite.id }
-            if (index != -1) {
-                // Add 1 to account for header if it exists
-                val scrollIndex = if (headerContent != null) index + 1 else index
-                coroutineScope.launch {
-                    lazyListState.animateScrollToItem(scrollIndex)
-                }
-            }
-            viewModel.lastSpriteSeenInPager = null
-        }
     }
 
     LazyColumn(
@@ -120,7 +82,9 @@ fun SpriteList(
             SpriteCard(
                 sprite = sprite,
                 meta = meta,
-                viewModel = viewModel,
+                onSpriteClick = onSpriteClick,
+                onSpriteEdit = onSpriteEdit,
+                onSpriteDelete = onSpriteDelete,
                 modifier = Modifier.animateItem()
             )
         }
@@ -132,12 +96,12 @@ fun SpriteList(
 fun SpriteCard(
     sprite: ISpriteData,
     meta: SpriteMetaData?,
-    viewModel: ProfileScreenViewModel, // Changed from HomeScreenViewModel to ProfileScreenViewModel
-    modifier: Modifier = Modifier,
+    onSpriteClick: (ISpriteData) -> Unit = {},
+    onSpriteEdit: (ISpriteData) -> Unit = {},
+    onSpriteDelete: (String) -> Unit = {},
+    modifier: Modifier = Modifier
 ) {
-    val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
-
     var showDropdown by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
     var isVisible by remember { mutableStateOf(true) }
@@ -147,10 +111,8 @@ fun SpriteCard(
             spriteName = meta?.spriteName ?: "Untitled",
             onDismiss = { showDeleteDialog = false },
             onConfirm = {
-                coroutineScope.launch {
-                    isVisible = false
-                    viewModel.deleteSpriteByIdDelay(sprite.id, 0)
-                }
+                isVisible = false
+                onSpriteDelete(sprite.id)
                 showDeleteDialog = false
             }
         )
@@ -209,9 +171,9 @@ fun SpriteCard(
                             showDropdown = false
                         },
                         onEdit = {
-                            viewModel.openDrawingActivity(context, sprite)
+                            onSpriteEdit(sprite)
                             showDropdown = false
-                        },
+                        }
                     )
                 }
             }
@@ -223,7 +185,7 @@ fun SpriteCard(
                     .align(Alignment.CenterHorizontally)
                     .clip(RoundedCornerShape(12.dp)),
                 onClick = {
-                    viewModel.toggleImagePager(sprite)
+                    onSpriteClick(sprite)
                 }
             )
 
@@ -238,7 +200,7 @@ fun SpriteDropdownMenu(
     modifier: Modifier = Modifier,
     onDismissRequest: () -> Unit,
     onDelete: () -> Unit = {},
-    onEdit: () -> Unit = {},
+    onEdit: () -> Unit = {}
 ) {
     DropdownMenu(
         expanded = expanded,

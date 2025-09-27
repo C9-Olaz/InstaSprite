@@ -1,6 +1,6 @@
 [versions]
 accompanistSystemuicontroller = "0.32.0"
-agp = "8.13.0"
+agp = "8.10.0"
 annotations = "23.0.0"
 coreSplashscreenVersion = "1.0.0"
 datastorePreferences = "1.1.7"
@@ -20,7 +20,7 @@ roomKtx = "2.7.1"
 roomRuntime = "2.7.1"
 zoomable = "2.8.0"
 material3 = "1.3.2"
-fragment = "1.8.9"
+runtime = "1.9.2"
 
 [libraries]
 accompanist-systemuicontroller = { module = "com.google.accompanist:accompanist-systemuicontroller", version.ref = "accompanistSystemuicontroller" }
@@ -52,6 +52,7 @@ androidx-room-compiler = { group = "androidx.room", name = "room-compiler", vers
 zoomable = { module = "net.engawapg.lib:zoomable", version.ref = "zoomable" }
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "material3" }
 androidx-fragment = { group = "androidx.fragment", name = "fragment", version.ref = "fragment" }
+androidx-compose-runtime = { group = "androidx.compose.runtime", name = "runtime", version.ref = "runtime" }
 
 
 
