@@ -11,7 +11,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -46,7 +46,7 @@ import com.olaz.instasprite.ui.screens.postscreen.composable.PostActions
 import com.olaz.instasprite.ui.screens.postscreen.composable.PostDescription
 import com.olaz.instasprite.ui.screens.postscreen.composable.PostHeader
 import com.olaz.instasprite.ui.screens.postscreen.composable.PostImage
-import com.olaz.instasprite.ui.screens.postscreen.dialog.DeletePostDialog
+import com.olaz.instasprite.ui.screens.postscreen.dialog.PostOptionDialog
 import com.olaz.instasprite.ui.theme.CatppuccinUI
 import com.olaz.instasprite.ui.theme.InstaSpriteTheme
 import com.olaz.instasprite.utils.UiUtils
@@ -58,7 +58,7 @@ data class PostScreenState(
     val likesCount: Int = 0,
     val isBookmarked: Boolean = false,
     val showShareDialog: Boolean = false,
-    val showDeleteDialog: Boolean = false,
+    val showPostOptionDialog: Boolean = false,
     val errorMessage: String? = null,
     val showImagePager: Boolean = false
 )
@@ -168,11 +168,11 @@ fun PostScreen(
             actions = {
                 if (true) {
                     IconButton(onClick = {
-                        uiState = uiState.copy(showDeleteDialog = true)
+                        uiState = uiState.copy(showPostOptionDialog = true)
                     }) {
                         Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = "Delete Post",
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "Post option",
                             tint = CatppuccinUI.TextColorLight
                         )
                     }
@@ -226,6 +226,8 @@ fun PostScreen(
                         }
                     )
                 }
+
+                
 
                 // Post Actions
                 item {
@@ -309,6 +311,8 @@ fun PostScreen(
             }
         }
 
+
+
         // Comment Input
         CommentInput(
             text = newCommentText,
@@ -334,15 +338,25 @@ fun PostScreen(
         )
     }
 
-    if (uiState.showDeleteDialog) {
-        DeletePostDialog(
-            onDismiss = { uiState = uiState.copy(showDeleteDialog = false) },
-            onConfirm = {
-                onDeletePost(postId ?: "")
-                uiState = uiState.copy(showDeleteDialog = false)
-                onBackClick()
-            }
+    if (uiState.showPostOptionDialog) {
+        PostOptionDialog(
+            onDismiss = { uiState = uiState.copy(showPostOptionDialog = false) },
+            onDelete = { onDeletePost(postId ?: "") },
+            onShare = { /* Handle share action */ },
+            isOwnPost = isOwnPost
         )
+    }
+    post?.let { postData ->
+        if (uiState.showImagePager) {
+            PostImagePagerOverlay(
+                sprite = postData.sprite,
+                onDismiss = { uiState = uiState.copy(showImagePager = false) },
+                onSaveImage = { sprite, fileName ->
+                    onEditPost(sprite)
+                },
+                isOwner = isOwnPost
+            )
+        }
     }
 }
 

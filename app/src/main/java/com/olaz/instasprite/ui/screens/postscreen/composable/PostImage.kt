@@ -36,7 +36,7 @@ fun PostImage(
                 .aspectRatio(1f)
                 .padding(16.dp)
                 .clickable { onImageClick() },
-            onClick = onDoubleClick
+            onClick = onImageClick
         )
     }
 }

@@ -6,18 +6,35 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
@@ -27,6 +44,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import com.olaz.instasprite.data.model.ISpriteData
+import com.olaz.instasprite.ui.screens.postscreen.composable.ZoomedImageOverlay
+import com.olaz.instasprite.ui.screens.postscreen.dialog.SaveImageDialog
 import com.olaz.instasprite.ui.theme.CatppuccinUI
 
 @Composable
@@ -265,168 +284,6 @@ fun PostImagePagerOverlay(
         )
     }
 }
-
-@Composable
-private fun ZoomedImageOverlay(
-    bitmap: androidx.compose.ui.graphics.ImageBitmap,
-    onDismiss: () -> Unit
-) {
-    var scale by remember { mutableStateOf(1f) }
-    var offsetX by remember { mutableStateOf(0f) }
-    var offsetY by remember { mutableStateOf(0f) }
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.9f))
-            .clickable { onDismiss() },
-        contentAlignment = Alignment.Center
-    ) {
-        Image(
-            bitmap = bitmap,
-            contentDescription = "Zoomed Sprite",
-            contentScale = ContentScale.Fit,
-            filterQuality = FilterQuality.None,
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer(
-                    scaleX = maxOf(1f, scale),
-                    scaleY = maxOf(1f, scale),
-                    translationX = offsetX,
-                    translationY = offsetY
-                )
-        )
-
-        // Zoom controls
-        Row(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(32.dp)
-                .background(
-                    CatppuccinUI.BackgroundColor.copy(alpha = 0.8f),
-                    RoundedCornerShape(24.dp)
-                )
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            IconButton(
-                onClick = {
-                    scale = maxOf(1f, scale - 0.5f)
-                    if (scale == 1f) {
-                        offsetX = 0f
-                        offsetY = 0f
-                    }
-                }
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Close,
-                    contentDescription = "Zoom Out",
-                    tint = CatppuccinUI.TextColorLight
-                )
-            }
-
-            Text(
-                text = "${(scale * 100).toInt()}%",
-                color = CatppuccinUI.TextColorLight,
-                modifier = Modifier.align(Alignment.CenterVertically)
-            )
-
-            IconButton(
-                onClick = { scale = minOf(5f, scale + 0.5f) }
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Zoom In",
-                    tint = CatppuccinUI.TextColorLight
-                )
-            }
-        }
-
-        // Close button
-        IconButton(
-            onClick = onDismiss,
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(16.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.Close,
-                contentDescription = "Close",
-                tint = CatppuccinUI.TextColorLight,
-                modifier = Modifier.size(32.dp)
-            )
-        }
-    }
-}
-
-@Composable
-private fun SaveImageDialog(
-    spriteName: String,
-    onSave: (String) -> Unit,
-    onDismiss: () -> Unit
-) {
-    var fileName by remember { mutableStateOf(spriteName) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(
-                "Save Image",
-                color = CatppuccinUI.TextColorLight
-            )
-        },
-        text = {
-            Column {
-                Text(
-                    "Enter filename for the image:",
-                    color = CatppuccinUI.TextColorLight
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = fileName,
-                    onValueChange = { fileName = it },
-                    label = { Text("Filename") },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = CatppuccinUI.TextColorLight,
-                        unfocusedTextColor = CatppuccinUI.TextColorLight,
-                        focusedBorderColor = CatppuccinUI.BottomBarColor,
-                        unfocusedBorderColor = CatppuccinUI.TextColorLight.copy(alpha = 0.3f),
-                        focusedLabelColor = CatppuccinUI.BottomBarColor,
-                        unfocusedLabelColor = CatppuccinUI.TextColorLight.copy(alpha = 0.7f)
-                    )
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    if (fileName.isNotBlank()) {
-                        onSave(fileName.trim())
-                    }
-                },
-                colors = ButtonDefaults.textButtonColors(
-                    contentColor = CatppuccinUI.BottomBarColor
-                )
-            ) {
-                Text("Save")
-            }
-        },
-        dismissButton = {
-            TextButton(
-                onClick = onDismiss,
-                colors = ButtonDefaults.textButtonColors(
-                    contentColor = CatppuccinUI.TextColorLight.copy(alpha = 0.7f)
-                )
-            ) {
-                Text("Cancel")
-            }
-        },
-        containerColor = CatppuccinUI.BackgroundColor,
-        textContentColor = CatppuccinUI.TextColorLight
-    )
-}
-
 // Helper function to create bitmap from sprite data
 private fun createBitmapFromSprite(sprite: ISpriteData): android.graphics.Bitmap? {
     return try {

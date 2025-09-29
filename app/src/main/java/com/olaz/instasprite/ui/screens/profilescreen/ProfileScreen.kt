@@ -4,21 +4,28 @@ import android.content.Intent
 import android.net.Uri
 import android.util.Log
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.AccountBox
+import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.olaz.instasprite.DrawingActivity
-
 import com.olaz.instasprite.R
 import com.olaz.instasprite.data.model.ISpriteData
 import com.olaz.instasprite.data.model.ISpriteWithMetaData
@@ -28,22 +35,21 @@ import com.olaz.instasprite.ui.screens.profilescreen.composable.ProfileBioSectio
 import com.olaz.instasprite.ui.screens.profilescreen.composable.ProfileHeader
 import com.olaz.instasprite.ui.screens.profilescreen.composable.ProfileInfoSection
 import com.olaz.instasprite.ui.screens.profilescreen.composable.ProfileStatsSection
+import com.olaz.instasprite.ui.screens.profilescreen.composable.ProfileTabRow
 import com.olaz.instasprite.ui.screens.profilescreen.composable.SpriteList
+import com.olaz.instasprite.ui.screens.profilescreen.dialog.EditProfileDialog
 import com.olaz.instasprite.ui.theme.CatppuccinUI
 import com.olaz.instasprite.ui.theme.InstaSpriteTheme
 import com.olaz.instasprite.utils.UiUtils
-import com.olaz.instasprite.ui.screens.profilescreen.dialog.EditProfileDialog
-import com.olaz.instasprite.ui.screens.profilescreen.dialog.PostOptionsDialog
 
 
 data class ProfileScreenState(
     val isProfileOwned: Boolean = true,
     val showEditProfileDialog: Boolean = false,
     val showBackgroundSelectorDialog: Boolean = false,
-    val showPostOptionsDialog: Boolean = false,
-    val showImagePager: Boolean = false,
     val isLoading: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val selectedTabIndex: Int = 0
 )
 
 data class UserProfile(
@@ -64,19 +70,30 @@ data class UserProfile(
     val joinDate: Long = System.currentTimeMillis()
 )
 
+enum class ProfileTab(
+    val title: String,
+) {
+    POSTS("Posts"),
+    LIKED("Liked"),
+    SHARED("Shared")
+}
+
 @Composable
 fun ProfileScreen(
     userId: String? = null,
     onBackClick: () -> Unit = {},
     onPostClick: ((String) -> Unit)? = null,
-    enableDummyPosts: Boolean = true // Add this parameter to control dummy posts
+    enableDummyPosts: Boolean = true
 ) {
     val context = LocalContext.current
     var uiState by remember { mutableStateOf(ProfileScreenState()) }
     var userProfile by remember { mutableStateOf(UserProfile()) }
     var userPosts by remember { mutableStateOf<List<ISpriteWithMetaData>>(emptyList()) }
+    var likedPosts by remember { mutableStateOf<List<ISpriteWithMetaData>>(emptyList()) }
+    var sharedPosts by remember { mutableStateOf<List<ISpriteWithMetaData>>(emptyList()) }
     var selectedPostId by remember { mutableStateOf<String?>(null) }
 
+    val tabs = ProfileTab.values()
 
     val handlePostClick = onPostClick ?: { postId: String ->
         val intent = Intent(context, com.olaz.instasprite.PostActivity::class.java)
@@ -117,7 +134,11 @@ fun ProfileScreen(
 
         // Load dummy posts if enabled
         if (enableDummyPosts) {
-            userPosts = createDummyPosts()
+            val allDummyPosts = createDummyPosts()
+            userPosts = allDummyPosts
+            // For demo purposes, simulate liked posts (first 3) and shared posts (last 2)
+            likedPosts = allDummyPosts.take(3)
+            sharedPosts = allDummyPosts.takeLast(2)
             Log.d("ProfileScreen", "Loaded ${userPosts.size} dummy posts")
         }
     }
@@ -140,13 +161,21 @@ fun ProfileScreen(
 
     val lazyListState = rememberLazyListState()
 
+    // Determine which posts to show based on selected tab
+    val currentPosts = when (uiState.selectedTabIndex) {
+        0 -> userPosts
+        1 -> likedPosts
+        2 -> sharedPosts
+        else -> userPosts
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(CatppuccinUI.BackgroundColorDarker)
     ) {
         // Use SpriteList with header content to make everything scroll together
-        if (userPosts.isEmpty()) {
+        if (currentPosts.isEmpty()) {
             // When empty, show profile sections + empty state
             Column(
                 modifier = Modifier
@@ -188,24 +217,47 @@ fun ProfileScreen(
                     followingCount = userProfile.followingCount
                 )
 
-                Text(
-                    text = "Posts",
-                    color = CatppuccinUI.TextColorLight,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                // Tab Row
+                ProfileTabRow(
+                    selectedTabIndex = uiState.selectedTabIndex,
+                    tabs = tabs,
+                    onTabSelected = { index ->
+                        uiState = uiState.copy(selectedTabIndex = index)
+                    }
                 )
 
+                // Empty state based on selected tab
+                val emptyStateMessage = when (uiState.selectedTabIndex) {
+                    0 -> if (userProfile.isOwnProfile) "Create your first sprite!" else "No posts to show"
+                    1 -> if (userProfile.isOwnProfile) "Posts you like will appear here" else "No liked posts"
+                    2 -> if (userProfile.isOwnProfile) "Posts you share will appear here" else "No shared posts"
+                    else -> "No content to show"
+                }
+
+                val emptyStateTitle = when (uiState.selectedTabIndex) {
+                    0 -> "No posts yet"
+                    1 -> "No liked posts"
+                    2 -> "No shared posts"
+                    else -> "No content"
+                }
+
+                val emptyStateIcon = when (uiState.selectedTabIndex) {
+                    0 -> Icons.Default.AccountBox
+                    1 -> Icons.Outlined.FavoriteBorder
+                    2 -> Icons.Outlined.Share
+                    else -> Icons.Default.AccountBox
+                }
+
                 EmptyStateContent(
-                    icon = Icons.Default.AccountBox,
-                    title = "No posts yet",
-                    subtitle = if (userProfile.isOwnProfile) "Create your first sprite!" else "No posts to show"
+                    icon = emptyStateIcon,
+                    title = emptyStateTitle,
+                    subtitle = emptyStateMessage
                 )
             }
         } else {
             // When there are posts, use SpriteList with header content
             SpriteList(
-                spritesWithMetaData = userPosts,
+                spritesWithMetaData = currentPosts,
                 lazyListState = lazyListState,
                 modifier = Modifier
                     .fillMaxSize()
@@ -222,11 +274,17 @@ fun ProfileScreen(
                 },
                 onSpriteDelete = { spriteId ->
                     Log.d("ProfileScreen", "Delete sprite: $spriteId")
-                    // Remove from local list (in real app, would delete from database)
-                    userPosts = userPosts.filter { it.sprite.id != spriteId }
-                    userProfile = userProfile.copy(
-                        postsCount = maxOf(0, userProfile.postsCount - 1)
-                    )
+                    // Remove from appropriate list based on current tab
+                    when (uiState.selectedTabIndex) {
+                        0 -> {
+                            userPosts = userPosts.filter { it.sprite.id != spriteId }
+                            userProfile = userProfile.copy(
+                                postsCount = maxOf(0, userProfile.postsCount - 1)
+                            )
+                        }
+                        1 -> likedPosts = likedPosts.filter { it.sprite.id != spriteId }
+                        2 -> sharedPosts = sharedPosts.filter { it.sprite.id != spriteId }
+                    }
                 },
                 headerContent = {
                     Column {
@@ -264,12 +322,13 @@ fun ProfileScreen(
                             followingCount = userProfile.followingCount
                         )
 
-                        Text(
-                            text = "Posts",
-                            color = CatppuccinUI.TextColorLight,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        // Tab Row
+                        ProfileTabRow(
+                            selectedTabIndex = uiState.selectedTabIndex,
+                            tabs = tabs,
+                            onTabSelected = { index ->
+                                uiState = uiState.copy(selectedTabIndex = index)
+                            }
                         )
                     }
                 }
@@ -304,27 +363,8 @@ fun ProfileScreen(
             }
         )
     }
-
-    if (uiState.showPostOptionsDialog) {
-        PostOptionsDialog(
-            postId = selectedPostId ?: "",
-            isOwnPost = userProfile.isOwnProfile,
-            onDismiss = {
-                uiState = uiState.copy(showPostOptionsDialog = false)
-                selectedPostId = null
-            },
-            onDelete = { postId ->
-                userPosts = userPosts.filter { it.sprite.id != postId }
-                userProfile = userProfile.copy(
-                    postsCount = maxOf(0, userProfile.postsCount - 1)
-                )
-            },
-            onShare = { postId ->
-                Log.d("ProfileScreen", "Sharing post: $postId")
-            }
-        )
-    }
 }
+
 
 private fun createDummySpriteData(id: String, name: String): ISpriteData {
     val width = 32
@@ -377,7 +417,7 @@ private fun createDummySpriteData(id: String, name: String): ISpriteData {
             }
             else -> {
                 // Default random pattern
-                (0xFF_000000 ).toInt()
+                (0xFF_000000).toInt()
             }
         }
     }
@@ -455,8 +495,6 @@ private fun createDummyPosts(): List<ISpriteWithMetaData> {
         )
     )
 }
-
-
 
 @Preview(showBackground = true)
 @Composable
