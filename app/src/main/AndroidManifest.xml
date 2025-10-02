@@ -29,6 +29,11 @@
             android:label="InstaSprite"
             android:theme="@style/Theme.InstaSprite"/>
 
+        <activity android:name=".NotificationActivity"
+            android:exported="true"
+            android:label="InstaSprite"
+            android:theme="@style/Theme.InstaSprite"/>
+
         <activity
             android:name=".SplashScreenActivity"
             android:exported="true"
