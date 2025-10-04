@@ -1,17 +1,13 @@
 package com.olaz.instasprite.ui.screens.homescreen
 
 import android.content.Intent
-import android.util.Log
-import android.util.MutableBoolean
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.snapping.SnapPosition
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -32,8 +28,6 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -58,11 +52,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextAlign.Companion.Center
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.olaz.instasprite.AuthActivity
+import com.olaz.instasprite.R
+import com.olaz.instasprite.SettingActivity
 import com.olaz.instasprite.data.database.AppDatabase
 import com.olaz.instasprite.data.repository.ISpriteDatabaseRepository
 import com.olaz.instasprite.data.repository.SortSettingRepository
@@ -73,7 +68,6 @@ import com.olaz.instasprite.ui.screens.homescreen.dialog.SelectSortOptionDialog
 import com.olaz.instasprite.ui.theme.CatppuccinUI
 import com.olaz.instasprite.ui.theme.InstaSpriteTheme
 import com.olaz.instasprite.utils.UiUtils
-import com.olaz.instasprite.R
 
 @Composable
 fun HomeScreen(viewModel: HomeScreenViewModel) {
@@ -288,7 +282,10 @@ fun HomeScreen(viewModel: HomeScreenViewModel) {
                                 }
                             },
                             selected = false,
-                            onClick = { /* Handle click */ }
+                            onClick = {
+                                val intent = Intent(context, SettingActivity::class.java)
+                                context.startActivity(intent)
+                            }
                         )
                         Spacer(modifier = Modifier.weight(1f))
 
