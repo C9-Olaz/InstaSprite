@@ -1,5 +1,6 @@
 package com.olaz.instasprite.ui.screens.homescreen
 
+import android.content.Intent
 import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -19,14 +20,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.DrawerState
-import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
@@ -34,10 +34,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.olaz.instasprite.NotificationActivity
 import com.olaz.instasprite.R
 import com.olaz.instasprite.ui.theme.CatppuccinUI
 import com.olaz.instasprite.utils.rememberBottomBarVisibleState
@@ -54,12 +56,13 @@ fun HomeBottomBar(
     val scope = rememberCoroutineScope()
 
     val isBottomBarVisible by rememberBottomBarVisibleState(lazyListState)
+
+    val context = LocalContext.current
     AnimatedVisibility(
         visible = isBottomBarVisible,
         enter = slideInVertically { fullHeight -> fullHeight },
         exit = slideOutVertically { fullHeight -> fullHeight }
     ) {
-
         BottomAppBar(
             containerColor = CatppuccinUI.BottomBarColor,
             modifier = modifier
@@ -84,6 +87,15 @@ fun HomeBottomBar(
                                 drawerState.close()
                             }
                         }
+                    },
+                    iconTint = CatppuccinUI.TextColorLight
+                )
+
+                BottomBarItem(
+                    imageVector = Icons.Outlined.Notifications,
+                    onClick = {
+                        val intent = Intent(context, NotificationActivity::class.java)
+                        context.startActivity(intent)
                     },
                     iconTint = CatppuccinUI.TextColorLight
                 )
