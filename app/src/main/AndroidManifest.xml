@@ -24,7 +24,23 @@
             android:label="InstaSprite"
             android:theme="@style/Theme.InstaSprite">
         </activity>
-        <activity android:name=".AuthActivity"
+        <activity
+            android:name=".AuthActivity"
+            android:exported="true"
+            android:label="InstaSprite"
+            android:theme="@style/Theme.InstaSprite" />
+
+        <activity android:name=".ProfileActivity"
+            android:exported="true"
+            android:label="InstaSprite"
+            android:theme="@style/Theme.InstaSprite"/>
+
+        <activity android:name=".PostActivity"
+            android:exported="true"
+            android:label="InstaSprite"
+            android:theme="@style/Theme.InstaSprite"/>
+
+        <activity android:name=".NotificationActivity"
             android:exported="true"
             android:label="InstaSprite"
             android:theme="@style/Theme.InstaSprite"/>

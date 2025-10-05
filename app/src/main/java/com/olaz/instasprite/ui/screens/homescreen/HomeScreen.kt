@@ -68,6 +68,8 @@ import com.olaz.instasprite.ui.screens.homescreen.dialog.SelectSortOptionDialog
 import com.olaz.instasprite.ui.theme.CatppuccinUI
 import com.olaz.instasprite.ui.theme.InstaSpriteTheme
 import com.olaz.instasprite.utils.UiUtils
+import com.olaz.instasprite.R
+import com.olaz.instasprite.ProfileActivity
 
 @Composable
 fun HomeScreen(viewModel: HomeScreenViewModel) {
@@ -118,7 +120,8 @@ fun HomeScreen(viewModel: HomeScreenViewModel) {
         ModalNavigationDrawer(
             drawerContent = {
                 ModalDrawerSheet (
-                    drawerContainerColor = CatppuccinUI.TopBarColor
+                    drawerContainerColor = CatppuccinUI.TopBarColor,
+                    modifier = Modifier.fillMaxWidth(0.9f)
                 ){
                     Column(
                         modifier = Modifier.padding(horizontal = 16.dp)
@@ -130,24 +133,8 @@ fun HomeScreen(viewModel: HomeScreenViewModel) {
                                 tint = Color.Unspecified,
                                 modifier = Modifier
                                     .padding(16.dp)
-                                    .size(50.dp)
+                                    .size(30.dp)
                             )
-                            Column(
-                            ) {
-                                Text(
-                                    fontSize = 16.sp,
-                                    text = "InstaSprite",
-                                    modifier = Modifier
-                                        .padding(start = 16.dp, bottom = 8.dp, top = 8.dp)
-                                )
-                                Text(
-                                    fontSize = 12.sp,
-                                    text = "Create and explore arts !",
-                                    modifier = Modifier
-                                        .padding(start = 16.dp)
-
-                                )
-                            }
                         }
                         HorizontalDivider(
                             color = Color.Transparent,
@@ -202,7 +189,10 @@ fun HomeScreen(viewModel: HomeScreenViewModel) {
                                     }
                                 },
                                 selected = false,
-                                onClick = { /* Handle click */ }
+                                onClick = {
+                                    val intent = Intent(context, ProfileActivity::class.java)
+                                    context.startActivity(intent)
+                                }
                             )
                         }
 
@@ -243,24 +233,6 @@ fun HomeScreen(viewModel: HomeScreenViewModel) {
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text("Home")
-                                }
-                            },
-                            selected = false,
-                            onClick = { /* Handle click */ }
-                        )
-                        NavigationDrawerItem(
-                            label = {
-                                Row {
-                                    Icon(
-                                        imageVector = Icons.Default.Create,
-                                        contentDescription = "Gallery",
-                                        tint = CatppuccinUI.TextColorLight,
-                                        modifier = Modifier
-                                            .padding(top = 6.dp)
-                                            .size(20.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text("Gallery")
                                 }
                             },
                             selected = false,
@@ -312,7 +284,7 @@ fun HomeScreen(viewModel: HomeScreenViewModel) {
                                 }
                             },
                             selected = false,
-                            onClick = { /* Handle click */ }
+                            onClick = { loginState = !loginState }
                         )
 
                         // Logout item (only show when logged in)
@@ -356,6 +328,14 @@ fun HomeScreen(viewModel: HomeScreenViewModel) {
                     ) {
                         Text(
                             text = "Home",
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(10.dp)
+                        )
+
+                        Text(
+                            text = "Gallery",
                             textAlign = TextAlign.Center,
                             modifier = Modifier
                                 .weight(1f)
