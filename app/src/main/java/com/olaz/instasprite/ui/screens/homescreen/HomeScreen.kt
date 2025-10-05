@@ -56,6 +56,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.olaz.instasprite.AuthActivity
+import com.olaz.instasprite.R
+import com.olaz.instasprite.SettingActivity
 import com.olaz.instasprite.data.database.AppDatabase
 import com.olaz.instasprite.data.repository.ISpriteDatabaseRepository
 import com.olaz.instasprite.data.repository.SortSettingRepository
@@ -252,7 +254,10 @@ fun HomeScreen(viewModel: HomeScreenViewModel) {
                                 }
                             },
                             selected = false,
-                            onClick = { /* Handle click */ }
+                            onClick = {
+                                val intent = Intent(context, SettingActivity::class.java)
+                                context.startActivity(intent)
+                            }
                         )
                         Spacer(modifier = Modifier.weight(1f))
 
