@@ -69,6 +69,7 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     implementation(libs.androidx.compose.material3)
+    implementation(libs.espresso.core)
     ksp(libs.androidx.room.compiler)
     implementation(libs.annotations) // Javax Annotations (used by Room, etc.)
 
@@ -84,4 +85,9 @@ dependencies {
     // --- Debugging ---
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
+
+    // --- Glance Widget ---
+    implementation("androidx.glance:glance-appwidget:1.1.1")
+    implementation("androidx.glance:glance-material3:1.1.1")
+    implementation("androidx.glance:glance-preview:1.1.1")
 }
