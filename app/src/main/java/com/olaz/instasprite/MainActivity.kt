@@ -11,6 +11,7 @@ import com.olaz.instasprite.data.network.NetworkModule
 import com.olaz.instasprite.data.repository.ISpriteDatabaseRepository
 import com.olaz.instasprite.data.repository.SortSettingRepository
 import com.olaz.instasprite.data.repository.StorageLocationRepository
+import com.olaz.instasprite.data.repository.ProfileRepository
 import com.olaz.instasprite.ui.screens.homescreen.HomeScreen
 import com.olaz.instasprite.ui.screens.homescreen.HomeScreenViewModel
 import com.olaz.instasprite.ui.screens.googleauthscreen.GoogleAuthViewModel
@@ -38,12 +39,14 @@ class MainActivity : ComponentActivity() {
             ISpriteDatabaseRepository(database.spriteDataDao(), database.spriteMetaDataDao())
         val sortSettingRepository = SortSettingRepository(applicationContext)
         val storageLocationRepository = StorageLocationRepository(applicationContext)
+        val profileRepository = ProfileRepository()
         val authStateUtils = AuthStateUtils(applicationContext)
 
         val homeViewModel = HomeScreenViewModel(
             spriteDatabaseRepository = spriteDataRepository,
             sortSettingRepository = sortSettingRepository,
-            storageLocationRepository = storageLocationRepository
+            storageLocationRepository = storageLocationRepository,
+            profileRepository = profileRepository
         )
 
         val authViewModel = GoogleAuthViewModel(

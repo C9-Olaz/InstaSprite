@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -21,7 +20,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
@@ -30,7 +28,6 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
@@ -61,12 +58,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.olaz.instasprite.AuthActivity
 import com.olaz.instasprite.ui.components.composable.JumpToTopButton
+import com.olaz.instasprite.ui.components.ProfileImage
 import com.olaz.instasprite.ui.screens.homescreen.dialog.CreateCanvasDialog
 import com.olaz.instasprite.ui.screens.homescreen.dialog.SelectSortOptionDialog
 import com.olaz.instasprite.ui.theme.CatppuccinUI
 import com.olaz.instasprite.utils.UiUtils
 import com.olaz.instasprite.utils.TokenUtils
-import com.olaz.instasprite.data.repository.ProfileRepository
 import com.olaz.instasprite.R
 import com.olaz.instasprite.ProfileActivity
 
@@ -113,32 +110,24 @@ fun HomeScreen(viewModel: HomeScreenViewModel) {
 
     val context = LocalContext.current
     val tokenUtils = remember { TokenUtils(context) }
-    val profileRepository = remember { ProfileRepository() }
     val coroutineScope = rememberCoroutineScope()
     
+    val profileState by viewModel.profileState.collectAsState()
 
     var loginState by remember { mutableStateOf(tokenUtils.isLoggedIn()) }
-    var memberName by remember { mutableStateOf("") }
-    var memberUsername by remember { mutableStateOf("") }
-    var isLoadingProfile by remember { mutableStateOf(false) }
     
 
     LaunchedEffect(Unit) {
         loginState = tokenUtils.isLoggedIn()
         if (loginState) {
-            isLoadingProfile = true
-            try {
-                val response = profileRepository.getCurrentUserProfile()
-                if (response.status == 200 && response.data != null) {
-                    memberName = response.data.memberName
-                    memberUsername = response.data.memberUsername
-                }
-            } catch (e: Exception) {
-                memberName = ""
-                memberUsername = ""
-            } finally {
-                isLoadingProfile = false
-            }
+            viewModel.getCurrentProfile()
+        }
+    }
+
+
+    LaunchedEffect(loginState) {
+        if (loginState) {
+            viewModel.loadProfileImage()
         }
     }
     
@@ -146,24 +135,9 @@ fun HomeScreen(viewModel: HomeScreenViewModel) {
     fun refreshAuthState() {
         loginState = tokenUtils.isLoggedIn()
         if (loginState) {
-            isLoadingProfile = true
-            coroutineScope.launch {
-                try {
-                    val response = profileRepository.getCurrentUserProfile()
-                    if (response.status == 200 && response.data != null) {
-                        memberName = response.data.memberName
-                        memberUsername = response.data.memberUsername
-                    }
-                } catch (e: Exception) {
-                    memberName = ""
-                    memberUsername = ""
-                } finally {
-                    isLoadingProfile = false
-                }
-            }
+            viewModel.getCurrentProfile()
         } else {
-            memberName = ""
-            memberUsername = ""
+            viewModel.clearProfile()
         }
     }
     
@@ -208,21 +182,15 @@ fun HomeScreen(viewModel: HomeScreenViewModel) {
                         )
 
                         if (loginState) {
-                            IconButton(
-                                onClick = { },
+                            ProfileImage(
+                                viewModel = viewModel,
                                 modifier = Modifier
                                     .size(100.dp)
-                                    .align(Alignment.CenterHorizontally)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.AccountCircle,
-                                    contentDescription = "Profile",
-                                    tint = CatppuccinUI.TextColorLight,
-                                    modifier = Modifier.fillMaxSize()
-                                )
-                            }
+                                    .align(Alignment.CenterHorizontally),
+                                key = "profile_${profileState.memberUsername}_${profileState.memberName}"
+                            )
 
-                            if (isLoadingProfile) {
+                            if (profileState.isLoading) {
                                 Text(
                                     "Loading...",
                                     modifier = Modifier
@@ -232,14 +200,14 @@ fun HomeScreen(viewModel: HomeScreenViewModel) {
                                 )
                             } else {
                                 Text(
-                                    memberName.ifEmpty { "User Name" },
+                                    profileState.memberName.ifEmpty { "User Name" },
                                     modifier = Modifier
                                         .align (Alignment.CenterHorizontally),
                                     style = MaterialTheme.typography.bodyLarge,
                                     color = CatppuccinUI.TextColorLight
                                 )
                                 Text(
-                                    "@${memberUsername.ifEmpty { "Usertag" }}",
+                                    "@${profileState.memberUsername.ifEmpty { "Usertag" }}",
                                     style = MaterialTheme.typography.bodySmall,
                                     modifier = Modifier
                                         .align (Alignment.CenterHorizontally),
@@ -379,8 +347,8 @@ fun HomeScreen(viewModel: HomeScreenViewModel) {
                                     tokenUtils.clearTokens()
 
                                     loginState = false
-                                    memberName = ""
-                                    memberUsername = ""
+                                    viewModel.clearProfile()
+                                    viewModel.clearProfileImage()
 
                                     coroutineScope.launch {
                                         drawerState.close()

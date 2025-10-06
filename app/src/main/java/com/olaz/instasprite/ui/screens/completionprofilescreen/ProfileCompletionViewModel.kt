@@ -1,6 +1,7 @@
 package com.olaz.instasprite.ui.screens.completionprofilescreen
 
 import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.olaz.instasprite.data.network.model.EditProfileRequest
@@ -14,7 +15,10 @@ data class ProfileCompletionUiState(
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
     val profileData: EditProfileResponse? = null,
-    val isProfileUpdated: Boolean = false
+    val isProfileUpdated: Boolean = false,
+    val selectedImageUri: Uri? = null,
+    val isUploadingImage: Boolean = false,
+    val imageUploadError: String? = null
 )
 
 class ProfileCompletionViewModel(
@@ -87,5 +91,53 @@ class ProfileCompletionViewModel(
 
     fun clearError() {
         _uiState.value = _uiState.value.copy(errorMessage = null)
+    }
+
+    fun selectImage(imageUri: Uri?) {
+        _uiState.value = _uiState.value.copy(
+            selectedImageUri = imageUri,
+            imageUploadError = null
+        )
+    }
+
+    fun uploadImage(context: Context) {
+        val currentState = _uiState.value
+        val imageUri = currentState.selectedImageUri
+        
+        if (imageUri == null) {
+            _uiState.value = currentState.copy(imageUploadError = "No image selected")
+            return
+        }
+
+        _uiState.value = currentState.copy(
+            isUploadingImage = true,
+            imageUploadError = null
+        )
+
+        viewModelScope.launch {
+            try {
+                val response = repository.uploadProfileImage(imageUri, context)
+                if (response.status == 200) {
+                    _uiState.value = _uiState.value.copy(
+                        isUploadingImage = false,
+                        imageUploadError = null
+                    )
+                } else {
+                    _uiState.value = _uiState.value.copy(
+                        isUploadingImage = false,
+                        imageUploadError = response.message ?: "Failed to upload image"
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isUploadingImage = false,
+                    imageUploadError = e.message ?: "Unknown error occurred"
+                )
+            }
+        }
+    }
+
+    fun clearImageError() {
+        _uiState.value = _uiState.value.copy(imageUploadError = null)
     }
 }

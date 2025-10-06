@@ -62,11 +62,23 @@ fun ProfileCompletionScreen(
                     errorMessage = uiState.errorMessage ?: "",
                     isLoading = uiState.isLoading,
                     profileData = uiState.profileData,
+                    selectedImageUri = uiState.selectedImageUri,
+                    isUploadingImage = uiState.isUploadingImage,
+                    imageUploadError = uiState.imageUploadError,
                     onUpdateClick = { username, name, introduce, email ->
                         viewModel.updateProfile(username, name, introduce, email)
                     },
                     onErrorChanged = { error ->
                         viewModel.clearError()
+                    },
+                    onImageSelected = { uri ->
+                        viewModel.selectImage(uri)
+                    },
+                    onUploadImage = {
+                        viewModel.uploadImage(context)
+                    },
+                    onClearImageError = {
+                        viewModel.clearImageError()
                     }
                 )
             }

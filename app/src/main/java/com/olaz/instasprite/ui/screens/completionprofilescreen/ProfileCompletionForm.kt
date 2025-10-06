@@ -16,7 +16,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.olaz.instasprite.data.network.model.EditProfileResponse
 import com.olaz.instasprite.ui.components.CustomTextField
+import com.olaz.instasprite.ui.components.AvatarSelectionComponent
 import com.olaz.instasprite.ui.theme.CatppuccinUI
+import androidx.compose.ui.platform.LocalContext
 
 private fun isValidEmail(email: String): Boolean {
     return Patterns.EMAIL_ADDRESS.matcher(email).matches()
@@ -27,13 +29,20 @@ fun ProfileCompletionForm(
     errorMessage: String,
     isLoading: Boolean,
     profileData: EditProfileResponse?,
+    selectedImageUri: android.net.Uri?,
+    isUploadingImage: Boolean,
+    imageUploadError: String?,
     onUpdateClick: (String, String, String?, String) -> Unit,
-    onErrorChanged: (String) -> Unit
+    onErrorChanged: (String) -> Unit,
+    onImageSelected: (android.net.Uri?) -> Unit,
+    onUploadImage: () -> Unit,
+    onClearImageError: () -> Unit
 ) {
     var username by remember { mutableStateOf(profileData?.memberUsername ?: "") }
     var name by remember { mutableStateOf(profileData?.memberName ?: "") }
     var introduce by remember { mutableStateOf(profileData?.memberIntroduce ?: "") }
     var email by remember { mutableStateOf(profileData?.memberEmail ?: "") }
+    val context = LocalContext.current
 
     LaunchedEffect(profileData) {
         profileData?.let {
@@ -69,6 +78,29 @@ fun ProfileCompletionForm(
         )
 
         Spacer(modifier = Modifier.height(32.dp))
+
+        AvatarSelectionComponent(
+            selectedImageUri = selectedImageUri,
+            onImageSelected = { uri ->
+                onImageSelected(uri)
+                onErrorChanged("")
+                onClearImageError()
+            },
+            modifier = Modifier.padding(horizontal = 16.dp)
+        )
+
+        if (imageUploadError != null) {
+            Text(
+                text = imageUploadError,
+                color = MaterialTheme.colorScheme.error,
+                fontSize = 14.sp,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp, start = 16.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
 
         CustomTextField(
             value = username,
@@ -145,10 +177,16 @@ fun ProfileCompletionForm(
                     name.length < 2 || name.length > 12 -> onErrorChanged("Name must be between 2 and 12 characters")
                     email.isBlank() -> onErrorChanged("Please enter your email")
                     !isValidEmail(email) -> onErrorChanged("Please enter a valid email")
-                    else -> onUpdateClick(username, name, introduce.ifBlank { null }, email)
+                    else -> {
+                        // Upload image first if selected, then update profile
+                        if (selectedImageUri != null) {
+                            onUploadImage()
+                        }
+                        onUpdateClick(username, name, introduce.ifBlank { null }, email)
+                    }
                 }
             },
-            enabled = !isLoading,
+            enabled = !isLoading && !isUploadingImage,
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = CatppuccinUI.BottomBarColor,
@@ -158,7 +196,7 @@ fun ProfileCompletionForm(
                 .fillMaxWidth()
                 .height(56.dp)
         ) {
-            if (isLoading) {
+            if (isLoading || isUploadingImage) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(24.dp),
                     color = CatppuccinUI.TextColorLight,
@@ -166,7 +204,7 @@ fun ProfileCompletionForm(
                 )
             } else {
                 Text(
-                    text = "Complete Profile",
+                    text = if (isUploadingImage) "Uploading Image..." else "Complete Profile",
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Medium
                 )

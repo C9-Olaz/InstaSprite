@@ -20,9 +20,10 @@ data class ResultResponse<T>(
 )
 
 data class UserProfileResponse(
+    val memberId: Int,
     val memberUsername: String,
     val memberName: String,
-    val memberImage: MemberImage,
+    val memberImageUrl: String,
     val memberIntroduce: String?,
     val memberPostsCount: Int,
     val memberFollowingsCount: Int,
