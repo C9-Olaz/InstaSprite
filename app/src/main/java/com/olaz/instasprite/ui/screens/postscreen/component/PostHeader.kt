@@ -1,4 +1,4 @@
-package com.olaz.instasprite.ui.screens.postscreen.composable
+package com.olaz.instasprite.ui.screens.postscreen.component
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable

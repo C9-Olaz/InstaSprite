@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -21,8 +20,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.Create
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Info
@@ -31,7 +28,6 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
@@ -40,34 +36,34 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.derivedStateOf
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.olaz.instasprite.AuthActivity
-import com.olaz.instasprite.R
-import com.olaz.instasprite.SettingActivity
-import com.olaz.instasprite.data.database.AppDatabase
-import com.olaz.instasprite.data.repository.ISpriteDatabaseRepository
-import com.olaz.instasprite.data.repository.SortSettingRepository
-import com.olaz.instasprite.data.repository.StorageLocationRepository
 import com.olaz.instasprite.ui.components.composable.JumpToTopButton
+import com.olaz.instasprite.ui.components.ProfileImage
 import com.olaz.instasprite.ui.screens.homescreen.dialog.CreateCanvasDialog
 import com.olaz.instasprite.ui.screens.homescreen.dialog.SelectSortOptionDialog
 import com.olaz.instasprite.ui.theme.CatppuccinUI
-import com.olaz.instasprite.ui.theme.InstaSpriteTheme
 import com.olaz.instasprite.utils.UiUtils
+import com.olaz.instasprite.utils.TokenUtils
 import com.olaz.instasprite.R
 import com.olaz.instasprite.ProfileActivity
 
@@ -112,8 +108,52 @@ fun HomeScreen(viewModel: HomeScreenViewModel) {
 
     val drawerState = rememberDrawerState(DrawerValue.Closed)
 
-    var loginState by remember { mutableStateOf(false) }
     val context = LocalContext.current
+    val tokenUtils = remember { TokenUtils(context) }
+    val coroutineScope = rememberCoroutineScope()
+    
+    val profileState by viewModel.profileState.collectAsState()
+
+    var loginState by remember { mutableStateOf(tokenUtils.isLoggedIn()) }
+    
+
+    LaunchedEffect(Unit) {
+        loginState = tokenUtils.isLoggedIn()
+        if (loginState) {
+            viewModel.getCurrentProfile()
+        }
+    }
+
+
+    LaunchedEffect(loginState) {
+        if (loginState) {
+            viewModel.loadProfileImage()
+        }
+    }
+    
+
+    fun refreshAuthState() {
+        loginState = tokenUtils.isLoggedIn()
+        if (loginState) {
+            viewModel.getCurrentProfile()
+        } else {
+            viewModel.clearProfile()
+        }
+    }
+    
+ 
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                refreshAuthState()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
 
     Box {
@@ -142,36 +182,38 @@ fun HomeScreen(viewModel: HomeScreenViewModel) {
                         )
 
                         if (loginState) {
-                            IconButton(
-                                onClick = { },
+                            ProfileImage(
+                                viewModel = viewModel,
                                 modifier = Modifier
-//                                    .padding(start = 10.dp, top = 16.dp)
                                     .size(100.dp)
-                                    .align(Alignment.CenterHorizontally)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.AccountCircle,
-                                    contentDescription = "Profile",
-                                    tint = CatppuccinUI.TextColorLight,
-                                    modifier = Modifier.fillMaxSize()
+                                    .align(Alignment.CenterHorizontally),
+                                key = "profile_${profileState.memberUsername}_${profileState.memberName}"
+                            )
+
+                            if (profileState.isLoading) {
+                                Text(
+                                    "Loading...",
+                                    modifier = Modifier
+                                        .align (Alignment.CenterHorizontally),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = CatppuccinUI.TextColorLight.copy(alpha = 0.7f)
+                                )
+                            } else {
+                                Text(
+                                    profileState.memberName.ifEmpty { "User Name" },
+                                    modifier = Modifier
+                                        .align (Alignment.CenterHorizontally),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = CatppuccinUI.TextColorLight
+                                )
+                                Text(
+                                    "@${profileState.memberUsername.ifEmpty { "Usertag" }}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    modifier = Modifier
+                                        .align (Alignment.CenterHorizontally),
+                                    color = CatppuccinUI.TextColorLight.copy(alpha = 0.7f)
                                 )
                             }
-
-                            Text(
-                                "User Name",
-                                modifier = Modifier
-                                    .align (Alignment.CenterHorizontally)
-//                                    .padding(start = 16.dp, bottom = 2.dp),
-                                //                            style = MaterialTheme.typography.labelMedium
-                            )
-                            Text(
-                                "@Usertag",
-                                style = MaterialTheme.typography.bodySmall,
-                                modifier = Modifier
-                                    .align (Alignment.CenterHorizontally)
-//                                    .padding(start = 16.dp, bottom = 16.dp),
-
-                            )
 
                             NavigationDrawerItem(
                                 label = {
@@ -202,14 +244,14 @@ fun HomeScreen(viewModel: HomeScreenViewModel) {
                                     Row {
                                         Icon(
                                             imageVector = Icons.Default.Person,
-                                            contentDescription = "Login/Register",
+                                            contentDescription = "Login",
                                             tint = CatppuccinUI.TextColorLight,
                                             modifier = Modifier
                                                 .padding(top = 6.dp)
                                                 .size(20.dp)
                                         )
                                         Spacer(modifier = Modifier.width(8.dp))
-                                        Text("Login/Register")
+                                        Text("Login")
                                     }
                                 },
                                 selected = false,
@@ -238,6 +280,7 @@ fun HomeScreen(viewModel: HomeScreenViewModel) {
                             selected = false,
                             onClick = { /* Handle click */ }
                         )
+
                         NavigationDrawerItem(
                             label = {
                                 Row {
@@ -254,20 +297,16 @@ fun HomeScreen(viewModel: HomeScreenViewModel) {
                                 }
                             },
                             selected = false,
-                            onClick = {
-                                val intent = Intent(context, SettingActivity::class.java)
-                                context.startActivity(intent)
-                            }
+                            onClick = { /* Handle click */ }
                         )
+
                         Spacer(modifier = Modifier.weight(1f))
 
-                        // Bottom section with divider
                         HorizontalDivider(
                             color = CatppuccinUI.TextColorLight.copy(alpha = 0.3f),
                             modifier = Modifier.padding(vertical = 8.dp)
                         )
 
-                        // About item
                         NavigationDrawerItem(
                             label = {
                                 Row {
@@ -284,10 +323,9 @@ fun HomeScreen(viewModel: HomeScreenViewModel) {
                                 }
                             },
                             selected = false,
-                            onClick = { loginState = !loginState }
+                            onClick = { /* Handle About click */ }
                         )
 
-                        // Logout item (only show when logged in)
                         if (loginState) {
                             NavigationDrawerItem(
                                 label = {
@@ -305,11 +343,20 @@ fun HomeScreen(viewModel: HomeScreenViewModel) {
                                     }
                                 },
                                 selected = false,
-                                onClick = { loginState = !loginState }
+                                onClick = {
+                                    tokenUtils.clearTokens()
+
+                                    loginState = false
+                                    viewModel.clearProfile()
+                                    viewModel.clearProfileImage()
+
+                                    coroutineScope.launch {
+                                        drawerState.close()
+                                    }
+                                }
                             )
                         }
 
-                        // Bottom padding
                         Spacer(modifier = Modifier.height(16.dp))
 
                     }
@@ -417,26 +464,5 @@ fun HomeScreen(viewModel: HomeScreenViewModel) {
                 )
             }
         }
-    }
-}
-
-@Preview
-@Composable
-private fun HomeScreenPreview() {
-    val context = LocalContext.current
-    val database = AppDatabase.getInstance(context)
-    val spriteDataRepository =
-        ISpriteDatabaseRepository(database.spriteDataDao(), database.spriteMetaDataDao())
-    val sortSettingRepository = SortSettingRepository(context)
-    val storageLocationRepository = StorageLocationRepository(context)
-
-    val viewModel = HomeScreenViewModel(
-        spriteDatabaseRepository = spriteDataRepository,
-        sortSettingRepository = sortSettingRepository,
-        storageLocationRepository = storageLocationRepository
-    )
-
-    InstaSpriteTheme {
-        HomeScreen(viewModel)
     }
 }

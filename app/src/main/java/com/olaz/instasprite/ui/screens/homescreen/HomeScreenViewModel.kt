@@ -16,6 +16,11 @@ import com.olaz.instasprite.data.model.ISpriteWithMetaData
 import com.olaz.instasprite.data.repository.ISpriteDatabaseRepository
 import com.olaz.instasprite.data.repository.SortSettingRepository
 import com.olaz.instasprite.data.repository.StorageLocationRepository
+import com.olaz.instasprite.data.repository.ProfileRepository
+import com.olaz.instasprite.data.network.model.UserProfileResponse
+import com.olaz.instasprite.data.network.NetworkModule
+import android.graphics.Bitmap
+import androidx.compose.runtime.mutableStateOf
 import com.olaz.instasprite.domain.usecase.SaveFileUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -42,10 +47,24 @@ data class HomeScreenState(
     val showImagePager: Boolean = false
 )
 
+data class ProfileImageState(
+    val isLoading: Boolean = false,
+    val imageUrl: String? = null,
+    val error: String? = null
+)
+
+data class ProfileState(
+    val isLoading: Boolean = false,
+    val memberName: String = "",
+    val memberUsername: String = "",
+    val error: String? = null
+)
+
 class HomeScreenViewModel(
     private val spriteDatabaseRepository: ISpriteDatabaseRepository,
     private val sortSettingRepository: SortSettingRepository,
     private val storageLocationRepository: StorageLocationRepository,
+    private val profileRepository: ProfileRepository
 ) : ViewModel() {
     private val saveFileUseCase = SaveFileUseCase()
 
@@ -61,6 +80,12 @@ class HomeScreenViewModel(
                 SharingStarted.WhileSubscribed(5000),
                 emptyList()
             )
+
+    private val _profileImageState = MutableStateFlow(ProfileImageState())
+    val profileImageState: StateFlow<ProfileImageState> = _profileImageState.asStateFlow()
+
+    private val _profileState = MutableStateFlow(ProfileState())
+    val profileState: StateFlow<ProfileState> = _profileState.asStateFlow()
 
     var searchQuery by mutableStateOf("")
         private set
@@ -180,5 +205,87 @@ class HomeScreenViewModel(
 
     fun updateSearchQuery(query: String) {
         searchQuery = query
+    }
+
+    fun loadProfileImage() {
+        viewModelScope.launch(Dispatchers.IO) {
+            _profileImageState.value = _profileImageState.value.copy(isLoading = true, error = null)
+            try {
+                val response = profileRepository.getCurrentUserProfile()
+                if (response.status == 200 && response.data != null) {
+                    val imageUrl = response.data.memberImageUrl
+
+                    if (imageUrl.isNotEmpty()) {
+                        val fullImageUrl = if (imageUrl.startsWith("http")) {
+                            imageUrl
+                        } else {
+                            "http://localhost:8080/images/$imageUrl"
+                        }
+                        _profileImageState.value = _profileImageState.value.copy(
+                            isLoading = false,
+                            imageUrl = fullImageUrl,
+                            error = null
+                        )
+                    } else {
+                        _profileImageState.value = _profileImageState.value.copy(
+                            isLoading = false,
+                            imageUrl = null,
+                            error = null
+                        )
+                    }
+                } else {
+                    _profileImageState.value = _profileImageState.value.copy(
+                        isLoading = false,
+                        imageUrl = null,
+                        error = "Failed to load profile"
+                    )
+                }
+            } catch (e: Exception) {
+                _profileImageState.value = _profileImageState.value.copy(
+                    isLoading = false,
+                    imageUrl = null,
+                    error = e.message ?: "Unknown error"
+                )
+            }
+        }
+    }
+
+    fun clearProfileImage() {
+        _profileImageState.value = ProfileImageState()
+    }
+
+    fun getCurrentProfile() {
+        viewModelScope.launch(Dispatchers.IO) {
+            _profileState.value = _profileState.value.copy(isLoading = true, error = null)
+            try {
+                val response = profileRepository.getCurrentUserProfile()
+                if (response.status == 200 && response.data != null) {
+                    _profileState.value = _profileState.value.copy(
+                        isLoading = false,
+                        memberName = response.data.memberName,
+                        memberUsername = response.data.memberUsername,
+                        error = null
+                    )
+                } else {
+                    _profileState.value = _profileState.value.copy(
+                        isLoading = false,
+                        memberName = "",
+                        memberUsername = "",
+                        error = "Failed to load profile"
+                    )
+                }
+            } catch (e: Exception) {
+                _profileState.value = _profileState.value.copy(
+                    isLoading = false,
+                    memberName = "",
+                    memberUsername = "",
+                    error = e.message ?: "Unknown error"
+                )
+            }
+        }
+    }
+
+    fun clearProfile() {
+        _profileState.value = ProfileState()
     }
 }

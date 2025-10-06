@@ -44,7 +44,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import com.olaz.instasprite.data.model.ISpriteData
-import com.olaz.instasprite.ui.screens.postscreen.composable.ZoomedImageOverlay
+import com.olaz.instasprite.ui.screens.postscreen.component.ZoomedImageOverlay
 import com.olaz.instasprite.ui.screens.postscreen.dialog.SaveImageDialog
 import com.olaz.instasprite.ui.theme.CatppuccinUI
 

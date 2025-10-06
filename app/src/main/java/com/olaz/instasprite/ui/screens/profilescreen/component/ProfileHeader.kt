@@ -1,4 +1,4 @@
-package com.olaz.instasprite.ui.screens.profilescreen.composable
+package com.olaz.instasprite.ui.screens.profilescreen.component
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
