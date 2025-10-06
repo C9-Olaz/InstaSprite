@@ -59,7 +59,7 @@ fun GoogleAuthScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // App Logo
+
             Image(
                 painter = painterResource(id = R.drawable.ic_launcher),
                 contentDescription = "App Logo",
@@ -68,7 +68,7 @@ fun GoogleAuthScreen(
 
             Spacer(modifier = Modifier.height(48.dp))
 
-            // App Title
+
             Text(
                 text = "InstaSprite",
                 fontSize = 32.sp,
@@ -79,7 +79,7 @@ fun GoogleAuthScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Subtitle
+
             Text(
                 text = "Create pixel art with ease",
                 fontSize = 16.sp,
@@ -89,7 +89,6 @@ fun GoogleAuthScreen(
 
             Spacer(modifier = Modifier.height(48.dp))
 
-            // Error message display
             errorMessage?.let { error ->
                 Text(
                     text = error,
@@ -101,7 +100,6 @@ fun GoogleAuthScreen(
                 Spacer(modifier = Modifier.height(16.dp))
             }
 
-            // Google Sign-In Button
             GoogleSignInButton(
                 onClick = {
                     isLoading = true
