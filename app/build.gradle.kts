@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     kotlin("plugin.serialization") version "2.0.21"
     id("com.google.devtools.ksp") version "2.1.21-2.0.1"
+    alias(libs.plugins.google.services)
 }
 
 android {
@@ -70,6 +71,7 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     implementation(libs.androidx.compose.material3)
     implementation(libs.espresso.core)
+    implementation(libs.androidx.compose.runtime)
     ksp(libs.androidx.room.compiler)
     implementation(libs.annotations) // Javax Annotations (used by Room, etc.)
 
@@ -81,6 +83,28 @@ dependencies {
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)
+
+    
+    // --- Networking ---
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.converter.gson)
+    implementation(libs.okhttp)
+    implementation(libs.okhttp.logging)
+    
+    // --- Coroutines ---
+    implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.play.services.auth.coroutines)
+
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.auth)
+
+
+    implementation (libs.androidx.credentials)
+    implementation( libs.androidx.credentials.play.services.auth)
+    implementation (libs.googleid)
+    implementation(libs.coil.compose)
+    implementation(libs.androidx.compose.material.icons.extended)
+
 
     // --- Debugging ---
     debugImplementation(libs.androidx.ui.tooling)
