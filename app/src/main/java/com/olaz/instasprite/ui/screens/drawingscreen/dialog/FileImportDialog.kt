@@ -1,6 +1,7 @@
 package com.olaz.instasprite.ui.screens.drawingscreen.dialog
 
 import android.content.Intent
+import android.net.Uri
 import android.provider.OpenableColumns
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -12,7 +13,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -26,15 +26,14 @@ import androidx.compose.ui.platform.LocalContext
 import com.olaz.instasprite.ui.components.composable.ColorPaletteList
 import com.olaz.instasprite.ui.components.composable.ColorPaletteListOptions
 import com.olaz.instasprite.ui.components.dialog.InputDialog
-import com.olaz.instasprite.ui.screens.drawingscreen.DrawingScreenViewModel
 import com.olaz.instasprite.ui.theme.CatppuccinUI
 import kotlinx.coroutines.launch
 
 @Composable
 fun FileImportDialog(
     onDismiss: () -> Unit,
-    onImportSuccess: (List<Color>) -> Unit,
-    viewModel: DrawingScreenViewModel
+    onImportPaletteFromFile: suspend (uri: Uri) -> List<Color>,
+    onImport: (List<Color>) -> Unit,
 ) {
     val context = LocalContext.current
     var previewColors by remember { mutableStateOf<List<Color>?>(null) }
@@ -58,17 +57,26 @@ fun FileImportDialog(
 
                 scope.launch {
                     try {
-                        val colors = viewModel.importColorsFromFile(it)
+                        val colors = onImportPaletteFromFile(it)
                         if (colors.isEmpty()) {
-                            Toast.makeText(context, "No colors found in file", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "No colors found in file", Toast.LENGTH_SHORT)
+                                .show()
                             previewColors = null
                         } else {
                             previewColors = colors
-                            Toast.makeText(context, "Colors loaded successfully!", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(
+                                context,
+                                "Colors loaded successfully!",
+                                Toast.LENGTH_SHORT
+                            ).show()
                         }
                     } catch (e: Exception) {
                         previewColors = null
-                        Toast.makeText(context, "An error occurred while importing the palette", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            context,
+                            "An error occurred while importing the palette",
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                 }
             }
@@ -81,9 +89,9 @@ fun FileImportDialog(
         onDismiss = onDismiss,
         onConfirm = {
             if (previewColors != null && previewColors!!.isNotEmpty()) {
-                viewModel.updateColorPalette(previewColors!!)
+                onImport(previewColors!!)
                 Toast.makeText(context, "Palette imported successfully!", Toast.LENGTH_SHORT).show()
-                onImportSuccess(previewColors!!)
+                onDismiss()
             } else {
                 Toast.makeText(context, "Please select a file first", Toast.LENGTH_SHORT).show()
             }

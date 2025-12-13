@@ -3,29 +3,24 @@ package com.olaz.instasprite.ui.screens.drawingscreen.dialog
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import com.olaz.instasprite.data.model.InputField
 import com.olaz.instasprite.ui.components.dialog.SaveFileDialog
-import com.olaz.instasprite.ui.screens.drawingscreen.DrawingScreenViewModel
 
 @Composable
 fun SaveISpriteDialog(
     onDismiss: () -> Unit,
-    viewModel: DrawingScreenViewModel
+    folderUri: Uri?,
+    onFolderSelected: (Uri) -> Unit,
+    onSave: (folderUri: Uri, fileName: String) -> Boolean
 ) {
     val context = LocalContext.current
     var fileName by remember { mutableStateOf("Sprite") }
-    var folderUri by remember { mutableStateOf<Uri?>(null) }
-
-    LaunchedEffect(Unit) {
-        folderUri = viewModel.getLastSavedLocation()
-    }
 
     SaveFileDialog(
         title = "Save ISprite",
@@ -41,13 +36,10 @@ fun SaveISpriteDialog(
             ),
         ),
         lastSavedUri = folderUri,
-        onFolderSelected = { uri ->
-            folderUri = uri
-            viewModel.setLastSavedLocation(uri)
-        },
+        onFolderSelected = onFolderSelected,
         onSave = {
             folderUri?.let { uri ->
-                val success = viewModel.saveISprite(context, folderUri!!, fileName)
+                val success = onSave(uri, fileName)
                 Toast.makeText(
                     context,
                     if (success) "$fileName saved successfully!" else "Failed to file",

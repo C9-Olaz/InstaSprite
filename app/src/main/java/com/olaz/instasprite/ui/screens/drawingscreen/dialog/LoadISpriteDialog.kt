@@ -12,13 +12,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -36,13 +33,14 @@ import com.olaz.instasprite.domain.export.ImageExporter
 import com.olaz.instasprite.ui.components.composable.CanvasPreviewer
 import com.olaz.instasprite.ui.components.composable.ImageZoomableOverlay
 import com.olaz.instasprite.ui.components.dialog.CustomDialog
-import com.olaz.instasprite.ui.screens.drawingscreen.DrawingScreenViewModel
 import com.olaz.instasprite.ui.theme.CatppuccinUI
 import com.olaz.instasprite.utils.getFileName
 
 @Composable
 fun LoadISpriteDialog(
-    onDismiss: () -> Unit, viewModel: DrawingScreenViewModel
+    onDismiss: () -> Unit,
+    onFilePicked: (Uri) -> ISpriteData?,
+    onLoad: (ISpriteData) -> Unit
 ) {
     val context = LocalContext.current
 
@@ -55,7 +53,7 @@ fun LoadISpriteDialog(
                 val fileName = getFileName(context, it)
                 if (fileName?.endsWith(".isprite") == true) {
                     fileUri = it
-                    spriteData = viewModel.getISpriteDataFromFile(context, it)
+                    spriteData = onFilePicked(it)
                 } else {
                     Toast.makeText(context, "Invalid file type", Toast.LENGTH_SHORT).show()
                 }
@@ -68,7 +66,7 @@ fun LoadISpriteDialog(
 
     CustomDialog(title = "Import ISprite", onDismiss = onDismiss, onConfirm = {
         spriteData?.let {
-            viewModel.loadISprite(spriteData!!)
+            onLoad(it)
             onDismiss()
         } ?: Toast.makeText(
             context, "No file loaded", Toast.LENGTH_SHORT

@@ -18,20 +18,37 @@ import com.olaz.instasprite.domain.tool.Tool
 import com.olaz.instasprite.domain.usecase.LoadFileUseCase
 import com.olaz.instasprite.domain.usecase.PixelCanvasUseCase
 import com.olaz.instasprite.domain.usecase.SaveFileUseCase
+import com.olaz.instasprite.ui.screens.drawingscreen.contract.CanvasMenuEvent
+import com.olaz.instasprite.ui.screens.drawingscreen.contract.ColorPaletteEvent
+import com.olaz.instasprite.ui.screens.drawingscreen.contract.ColorPaletteState
+import com.olaz.instasprite.ui.screens.drawingscreen.contract.PixelCanvasEvent
+import com.olaz.instasprite.ui.screens.drawingscreen.contract.PixelCanvasState
+import com.olaz.instasprite.ui.screens.drawingscreen.contract.ToolSelectorEvent
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-data class CanvasState(
-    val width: Int,
-    val height: Int,
-    val pixels: List<Color>
-)
+
+sealed interface ActiveDialog {
+    data object SaveImage : ActiveDialog
+    data object SaveISprite : ActiveDialog
+    data object LoadISprite : ActiveDialog
+    data object ResizeCanvas : ActiveDialog
+    data object ColorWheel : ActiveDialog
+    data object ImportColorPalettes : ActiveDialog
+    data object LospecPaletteImport : ActiveDialog
+    data object FilePaletteImport : ActiveDialog
+}
 
 data class DrawingScreenState(
     val selectedTool: Tool,
     val toolSize: Int,
+    val dialogStack: List<ActiveDialog> = emptyList()
 )
 
 class DrawingScreenViewModel(
@@ -42,7 +59,7 @@ class DrawingScreenViewModel(
     private val colorPaletteRepository: ColorPaletteRepository,
     private val lospecColorPaletteRepository: LospecColorPaletteRepository,
 ) : ViewModel() {
-    private val canvasHistoryManager = CanvasHistoryManager<CanvasState>()
+    private val canvasHistoryManager = CanvasHistoryManager<PixelCanvasState>()
     private val saveFileUseCase = SaveFileUseCase()
     private val loadFileUseCase = LoadFileUseCase()
     private val pixelCanvasUseCase = PixelCanvasUseCase(
@@ -59,15 +76,13 @@ class DrawingScreenViewModel(
     val uiState: StateFlow<DrawingScreenState> = _uiState.asStateFlow()
 
     private val _canvasState = MutableStateFlow(
-        CanvasState(
+        PixelCanvasState(
             width = pixelCanvasUseCase.getCanvasWidth(),
             height = pixelCanvasUseCase.getCanvasHeight(),
             pixels = pixelCanvasUseCase.getAllPixels()
         )
     )
-    val canvasState: StateFlow<CanvasState> = _canvasState.asStateFlow()
-
-    val pixelChangeTrigger = pixelCanvasUseCase.pixelChanged
+    val canvasState: StateFlow<PixelCanvasState> = _canvasState.asStateFlow()
 
     private val _lastSavedLocation = MutableStateFlow<Uri?>(null)
     val lastSavedLocation: StateFlow<Uri?> = _lastSavedLocation.asStateFlow()
@@ -75,6 +90,79 @@ class DrawingScreenViewModel(
     var colorPalette = colorPaletteRepository.colors
     var activeColor = colorPaletteRepository.activeColor
     var recentColors = colorPaletteRepository.recentColors
+
+    val colorPaletteState: StateFlow<ColorPaletteState> = combine(
+        colorPaletteRepository.colors,
+        colorPaletteRepository.activeColor,
+        colorPaletteRepository.recentColors
+    ) { palette, active, recent ->
+        ColorPaletteState(
+            colorPalette = palette,
+            activeColor = active,
+            recentColors = recent
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = ColorPaletteState(
+            colorPalette = colorPalette.value,
+            activeColor = activeColor.value,
+            recentColors = recentColors.value
+        )
+    )
+
+    fun onColorPaletteEvent(event: ColorPaletteEvent) {
+        when (event) {
+            is ColorPaletteEvent.SelectColor -> selectColor(event.color)
+            is ColorPaletteEvent.OpenColorWheelDialog -> openDialog(ActiveDialog.ColorWheel)
+        }
+    }
+
+    fun onCanvasMenuEvent(event: CanvasMenuEvent) {
+        when (event) {
+            is CanvasMenuEvent.RotateCanvas -> rotate()
+            is CanvasMenuEvent.HorizontalFlip -> hFlip()
+            is CanvasMenuEvent.VerticalFlip -> vFlip()
+            is CanvasMenuEvent.OpenResizeDialog -> openDialog(ActiveDialog.ResizeCanvas)
+        }
+    }
+
+    fun onCanvasEvent(event: PixelCanvasEvent) {
+        when (event) {
+            is PixelCanvasEvent.OnCanvasTouchStart -> saveState()
+            is PixelCanvasEvent.DrawAt -> applyTool(event.y, event.x)
+
+        }
+    }
+
+    fun onToolSelectorEvent(event: ToolSelectorEvent) {
+        when (event) {
+            is ToolSelectorEvent.Undo -> undo()
+            is ToolSelectorEvent.Redo -> redo()
+            is ToolSelectorEvent.OpenSaveImageDialog -> openDialog(ActiveDialog.SaveImage)
+            is ToolSelectorEvent.OpenSaveISpriteDialog -> openDialog(ActiveDialog.SaveISprite)
+            is ToolSelectorEvent.OpenLoadISpriteDialog -> openDialog(ActiveDialog.LoadISprite)
+            is ToolSelectorEvent.SelectTool -> selectTool(tool = event.tool)
+        }
+    }
+
+    fun openDialog(dialog: ActiveDialog) {
+        _uiState.update {
+            it.copy(dialogStack = it.dialogStack + dialog)
+        }
+    }
+
+    fun closeTopDialog() {
+        _uiState.update {
+            if (it.dialogStack.isNotEmpty()) {
+                it.copy(dialogStack = it.dialogStack.dropLast(1))
+            } else it
+        }
+    }
+
+    fun closeAllDialogs() {
+        _uiState.update { it.copy(dialogStack = emptyList()) }
+    }
 
     fun setCanvasSize(width: Int, height: Int) {
         pixelCanvasUseCase.setCanvas(width, height)
@@ -107,6 +195,7 @@ class DrawingScreenViewModel(
         )
 
         tool.apply(pixelCanvasUseCase, row, col, color, size)
+        refreshCanvasState()
     }
 
     fun getPixelData(row: Int, col: Int): Color {
@@ -115,7 +204,7 @@ class DrawingScreenViewModel(
 
     fun saveState() {
         canvasHistoryManager.saveState(
-            CanvasState(
+            PixelCanvasState(
                 width = pixelCanvasUseCase.getCanvasWidth(),
                 height = pixelCanvasUseCase.getCanvasHeight(),
                 pixels = pixelCanvasUseCase.getAllPixels()
@@ -171,6 +260,19 @@ class DrawingScreenViewModel(
             height = height
         )
         saveState()
+        refreshCanvasState()
+    }
+
+    private fun refreshCanvasState() {
+        val newPixels = pixelCanvasUseCase.getAllPixels()
+        val newWidth = pixelCanvasUseCase.getCanvasWidth()
+        val newHeight = pixelCanvasUseCase.getCanvasHeight()
+
+        _canvasState.value = _canvasState.value.copy(
+            pixels = newPixels,
+            width = newWidth,
+            height = newHeight
+        )
     }
 
     suspend fun getLastSavedLocation(): Uri? {
@@ -241,6 +343,7 @@ class DrawingScreenViewModel(
         }
         canvasHistoryManager.reset()
         saveState()
+        refreshCanvasState()
     }
 
     fun saveToDB(spriteName: String? = null) {

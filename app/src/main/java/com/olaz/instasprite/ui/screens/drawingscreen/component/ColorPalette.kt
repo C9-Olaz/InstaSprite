@@ -1,4 +1,4 @@
-package com.olaz.instasprite.ui.screens.drawingscreen
+package com.olaz.instasprite.ui.screens.drawingscreen.component
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -24,7 +24,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,28 +41,24 @@ import androidx.compose.ui.unit.dp
 import com.olaz.instasprite.R
 import com.olaz.instasprite.ui.components.composable.ColorPaletteList
 import com.olaz.instasprite.ui.components.composable.ColorPaletteListOptions
-import com.olaz.instasprite.ui.screens.drawingscreen.dialog.ColorWheelDialog
-import com.olaz.instasprite.ui.screens.drawingscreen.dialog.ResizeCanvasDialog
+import com.olaz.instasprite.ui.screens.drawingscreen.contract.CanvasMenuEvent
+import com.olaz.instasprite.ui.screens.drawingscreen.contract.ColorPaletteEvent
+import com.olaz.instasprite.ui.screens.drawingscreen.contract.ColorPaletteState
 import com.olaz.instasprite.ui.theme.CatppuccinUI
 import com.olaz.instasprite.utils.toHexString
 import kotlinx.coroutines.launch
 
-private data class CanvasMenuCallback(
-    val onRotateRequest: () -> Unit = {},
-    val onHFlipRequest: () -> Unit = {},
-    val onVFlipRequest: () -> Unit = {},
-    val onResizeRequest: () -> Unit = {},
-)
-
 @Composable
 fun ColorPalette(
     modifier: Modifier = Modifier,
-    viewModel: DrawingScreenViewModel
+    colorPaletteState: ColorPaletteState,
+    onColorPaletteEvent: (ColorPaletteEvent) -> Unit,
+    onCanvasMenuEvent: (CanvasMenuEvent) -> Unit
 ) {
 
-    val colorPalette by viewModel.colorPalette.collectAsState()
-    val activeColor by viewModel.activeColor.collectAsState()
-    val recentColors by viewModel.recentColors.collectAsState()
+    val colorPalette = colorPaletteState.colorPalette
+    val activeColor = colorPaletteState.activeColor
+    val recentColors = colorPaletteState.recentColors
 
     val colorPaletteListState = rememberLazyListState()
     val recentColorsListState = rememberLazyListState()
@@ -95,27 +90,6 @@ fun ColorPalette(
         }
     }
 
-    var showColorWheel by remember { mutableStateOf(false) }
-    if (showColorWheel) {
-        ColorWheelDialog(
-            onDismiss = { showColorWheel = false },
-            initialColor = activeColor,
-            onColorSelected = { color ->
-                viewModel.selectColor(color)
-                showColorWheel = false
-            },
-            viewModel = viewModel
-        )
-    }
-
-    var showResizeCanvasDialog by remember { mutableStateOf(false) }
-    if (showResizeCanvasDialog) {
-        ResizeCanvasDialog(
-            onDismiss = { showResizeCanvasDialog = false },
-            viewModel = viewModel
-        )
-    }
-
     var showCanvasMenu by remember { mutableStateOf(false) }
 
     Column(
@@ -125,7 +99,9 @@ fun ColorPalette(
             colorPaletteListOptions = ColorPaletteListOptions(
                 colors = colorPalette,
                 activeColor = activeColor,
-                onColorSelected = viewModel::selectColor,
+                onColorSelected = { color ->
+                    onColorPaletteEvent(ColorPaletteEvent.SelectColor(color))
+                },
             ),
             lazyListState = colorPaletteListState,
         )
@@ -159,7 +135,7 @@ fun ColorPalette(
             )
 
             IconButton(
-                onClick = { showColorWheel = true },
+                onClick = { onColorPaletteEvent(ColorPaletteEvent.OpenColorWheelDialog) },
                 modifier = Modifier
                     .size(45.dp)
                     .padding(horizontal = 2.dp)
@@ -177,7 +153,9 @@ fun ColorPalette(
                 colorPaletteListOptions = ColorPaletteListOptions(
                     colors = recentColors.toList(),
                     listHeight = 40.dp,
-                    onColorSelected = viewModel::selectColor,
+                    onColorSelected = { color ->
+                        onColorPaletteEvent(ColorPaletteEvent.SelectColor(color))
+                    },
                 ),
                 lazyListState = recentColorsListState,
                 modifier = Modifier
@@ -201,16 +179,10 @@ fun ColorPalette(
 
                 CanvasMenuDropdownMenu(
                     expanded = showCanvasMenu,
+                    onEvent = onCanvasMenuEvent,
                     onDismiss = { showCanvasMenu = false },
-                    menuCallback = CanvasMenuCallback(
-                        onRotateRequest = viewModel::rotate,
-                        onHFlipRequest = viewModel::hFlip,
-                        onVFlipRequest = viewModel::vFlip,
-                        onResizeRequest = {
-                            showResizeCanvasDialog = true
-                        }
-                    )
                 )
+
             }
 
         }
@@ -249,77 +221,77 @@ private fun ActiveColor(
 private fun CanvasMenuDropdownMenu(
     expanded: Boolean,
     onDismiss: () -> Unit,
+    onEvent: (CanvasMenuEvent) -> Unit,
     modifier: Modifier = Modifier,
-    menuCallback: CanvasMenuCallback = CanvasMenuCallback()
 ) {
-    with(menuCallback) {
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = onDismiss,
-            modifier = modifier.background(CatppuccinUI.DropDownMenuColor)
-        ) {
-            DropdownMenuItem(
-                text = {
-                    Text(text = "Rotate Canvas")
-                },
-                leadingIcon = {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_redo),
-                        contentDescription = "Rotate Canvas",
-                        tint = Color.Unspecified,
-                        modifier = Modifier.size(32.dp)
-                    )
-                },
-                onClick = onRotateRequest
-            )
 
-            DropdownMenuItem(
-                text = {
-                    Text(text = "Horizontal Flip")
-                },
-                leadingIcon = {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_hflip),
-                        contentDescription = "Flip canvas horizontal",
-                        tint = Color.Unspecified,
-                        modifier = Modifier.size(32.dp)
-                    )
-                },
-                onClick = onHFlipRequest
-            )
+    DropdownMenu(
+        expanded = expanded,
+        onDismissRequest = onDismiss,
+        modifier = modifier.background(CatppuccinUI.DropDownMenuColor)
+    ) {
+        DropdownMenuItem(
+            text = {
+                Text(text = "Rotate Canvas")
+            },
+            leadingIcon = {
+                Icon(
+                    painter = painterResource(R.drawable.ic_redo),
+                    contentDescription = "Rotate Canvas",
+                    tint = Color.Unspecified,
+                    modifier = Modifier.size(32.dp)
+                )
+            },
+            onClick = { onEvent(CanvasMenuEvent.RotateCanvas) }
+        )
 
-            DropdownMenuItem(
-                text = {
-                    Text(text = "Vertical Flip")
-                },
-                leadingIcon = {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_vflip),
-                        contentDescription = "Flip canvas vertical",
-                        tint = Color.Unspecified,
-                        modifier = Modifier.size(32.dp)
-                    )
-                },
-                onClick = onVFlipRequest
-            )
+        DropdownMenuItem(
+            text = {
+                Text(text = "Horizontal Flip")
+            },
+            leadingIcon = {
+                Icon(
+                    painter = painterResource(R.drawable.ic_hflip),
+                    contentDescription = "Flip canvas horizontal",
+                    tint = Color.Unspecified,
+                    modifier = Modifier.size(32.dp)
+                )
+            },
+            onClick = { onEvent(CanvasMenuEvent.HorizontalFlip) }
+        )
 
-            DropdownMenuItem(
-                text = {
-                    Text(text = "Resize")
-                },
-                leadingIcon = {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_resize),
-                        contentDescription = "Resize canvas",
-                        tint = Color.Unspecified,
-                        modifier = Modifier.size(32.dp)
-                    )
-                },
-                onClick = onResizeRequest
-            )
-        }
+        DropdownMenuItem(
+            text = {
+                Text(text = "Vertical Flip")
+            },
+            leadingIcon = {
+                Icon(
+                    painter = painterResource(R.drawable.ic_vflip),
+                    contentDescription = "Flip canvas vertical",
+                    tint = Color.Unspecified,
+                    modifier = Modifier.size(32.dp)
+                )
+            },
+            onClick = { onEvent(CanvasMenuEvent.VerticalFlip) }
+        )
+
+        DropdownMenuItem(
+            text = {
+                Text(text = "Resize")
+            },
+            leadingIcon = {
+                Icon(
+                    painter = painterResource(R.drawable.ic_resize),
+                    contentDescription = "Resize canvas",
+                    tint = Color.Unspecified,
+                    modifier = Modifier.size(32.dp)
+                )
+            },
+            onClick = { onEvent(CanvasMenuEvent.OpenResizeDialog) }
+        )
     }
 }
+
 
 private suspend fun LazyListState.scrollItemToCenter(
     index: Int,

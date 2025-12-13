@@ -1,4 +1,4 @@
-package com.olaz.instasprite.ui.screens.drawingscreen
+package com.olaz.instasprite.ui.screens.drawingscreen.component
 
 import android.annotation.SuppressLint
 import android.graphics.Bitmap
@@ -13,12 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -39,37 +34,34 @@ import com.olaz.instasprite.domain.draw.DrawUtils
 import com.olaz.instasprite.domain.tool.EraserTool
 import com.olaz.instasprite.domain.tool.FillTool
 import com.olaz.instasprite.domain.tool.PencilTool
+import com.olaz.instasprite.domain.tool.Tool
+import com.olaz.instasprite.ui.screens.drawingscreen.contract.PixelCanvasEvent
+import com.olaz.instasprite.ui.screens.drawingscreen.contract.PixelCanvasState
 import com.olaz.instasprite.ui.theme.CatppuccinUI
 
-@SuppressLint("StateFlowValueCalledInComposition")
 @Composable
 fun PixelCanvas(
     modifier: Modifier = Modifier,
-    viewModel: DrawingScreenViewModel
+    pixelCanvasState: PixelCanvasState,
+    selectedTool: Tool?,
+    onEvent: (PixelCanvasEvent) -> Unit
 ) {
-    var canvasWidth by remember { mutableIntStateOf(viewModel.canvasState.value.width) }
-    var canvasHeight by remember { mutableIntStateOf(viewModel.canvasState.value.height) }
 
-    LaunchedEffect(Unit) {
-        viewModel.canvasState.collect { state ->
-            canvasWidth = state.width
-            canvasHeight = state.height
-        }
-    }
-
-    val pixelChangeTrigger by viewModel.pixelChangeTrigger.collectAsState()
+    val (canvasWidth, canvasHeight, pixels) = pixelCanvasState
 
     val bitmap = remember(canvasWidth, canvasHeight) {
         createBitmap(canvasWidth, canvasHeight)
     }
 
-    val imageBitmap: ImageBitmap = remember(bitmap, pixelChangeTrigger) {
-        updateBitmapPixels(
-            bitmap = bitmap,
-            viewModel = viewModel,
-            checkerColor1 = CatppuccinUI.CanvasChecker1Color.toArgb(),
-            checkerColor2 = CatppuccinUI.CanvasChecker2Color.toArgb()
-        )
+    val imageBitmap: ImageBitmap = remember(bitmap, pixels) {
+        if (canvasWidth > 0 && canvasHeight > 0 && pixels.isNotEmpty()) {
+            updateBitmapPixels(
+                bitmap = bitmap,
+                pixels = pixels,
+                checkerColor1 = CatppuccinUI.CanvasChecker1Color.toArgb(),
+                checkerColor2 = CatppuccinUI.CanvasChecker2Color.toArgb()
+            )
+        }
         bitmap.asImageBitmap()
     }
 
@@ -98,7 +90,7 @@ fun PixelCanvas(
                 Canvas(
                     modifier = Modifier
                         .fillMaxSize()
-                        .drawingPointerInput(canvasWidth, canvasHeight, viewModel)
+                        .drawingPointerInput(canvasWidth, canvasHeight, selectedTool, onEvent)
                 ) {
                     drawImage(
                         image = imageBitmap,
@@ -118,13 +110,13 @@ fun PixelCanvas(
 
 private fun updateBitmapPixels(
     bitmap: Bitmap,
-    viewModel: DrawingScreenViewModel,
+    pixels: List<Color>,
     checkerColor1: Int,
     checkerColor2: Int
 ) {
     val width = bitmap.width
     val height = bitmap.height
-    val pixels = IntArray(width * height)
+    val pixelArray = IntArray(width * height)
 
     val useLargeCheckers = width >= 32 || height >= 32
     val blockSize = if (useLargeCheckers) 16 else 1
@@ -132,9 +124,10 @@ private fun updateBitmapPixels(
     for (row in 0 until height) {
         for (col in 0 until width) {
             val index = row * width + col
-            val pixelColor = viewModel.getPixelData(row, col)
 
-            pixels[index] = if (pixelColor == Color.Transparent) {
+            val pixelColor = if (index < pixels.size) pixels[index] else Color.Transparent
+
+            pixelArray[index] = if (pixelColor == Color.Transparent) {
                 val checkerRow = row / blockSize
                 val checkerCol = col / blockSize
                 if ((checkerRow + checkerCol) % 2 == 0) checkerColor1 else checkerColor2
@@ -144,7 +137,7 @@ private fun updateBitmapPixels(
         }
     }
 
-    bitmap.setPixels(pixels, 0, width, 0, 0, width, height)
+    bitmap.setPixels(pixelArray, 0, width, 0, 0, width, height)
 }
 
 
@@ -187,14 +180,15 @@ fun Offset.toGridCell(canvasWidth: Int, canvasHeight: Int, cols: Int, rows: Int)
 fun Modifier.drawingPointerInput(
     canvasWidth: Int,
     canvasHeight: Int,
-    viewModel: DrawingScreenViewModel
+    selectedTool: com.olaz.instasprite.domain.tool.Tool?,
+    onEvent: (PixelCanvasEvent) -> Unit
 ): Modifier {
-    val selectedTool = viewModel.uiState.collectAsState().value.selectedTool
+    if (canvasWidth == 0 || canvasHeight == 0) return this
 
     return this.pointerInput(canvasWidth, canvasHeight, selectedTool) {
         awaitEachGesture {
             if (selectedTool in listOf(PencilTool, EraserTool, FillTool)) {
-                viewModel.saveState()
+                onEvent(PixelCanvasEvent.OnCanvasTouchStart)
             }
 
             val down = awaitFirstDown(requireUnconsumed = false)
@@ -210,7 +204,7 @@ fun Modifier.drawingPointerInput(
                 canvasWidth, canvasHeight
             )
 
-            viewModel.applyTool(startCell.y, startCell.x)
+            onEvent(PixelCanvasEvent.DrawAt(startCell.x, startCell.y))
 
             if (selectedTool in listOf(PencilTool, EraserTool)) {
                 var lastCell = startCell
@@ -229,7 +223,7 @@ fun Modifier.drawingPointerInput(
                         )
 
                         for ((x, y) in linePoints) {
-                            viewModel.applyTool(y, x)
+                            onEvent(PixelCanvasEvent.DrawAt(x, y))
                         }
 
                         lastCell = dragCell

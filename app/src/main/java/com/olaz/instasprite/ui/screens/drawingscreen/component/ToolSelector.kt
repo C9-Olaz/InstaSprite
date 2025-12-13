@@ -1,4 +1,4 @@
-package com.olaz.instasprite.ui.screens.drawingscreen
+package com.olaz.instasprite.ui.screens.drawingscreen.component
 
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.layout.Arrangement
@@ -15,7 +15,6 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -30,48 +29,18 @@ import com.olaz.instasprite.domain.tool.EyedropperTool
 import com.olaz.instasprite.domain.tool.FillTool
 import com.olaz.instasprite.domain.tool.MoveTool
 import com.olaz.instasprite.domain.tool.PencilTool
-import com.olaz.instasprite.ui.screens.drawingscreen.dialog.LoadISpriteDialog
-import com.olaz.instasprite.ui.screens.drawingscreen.dialog.SaveISpriteDialog
-import com.olaz.instasprite.ui.screens.drawingscreen.dialog.SaveImageDialog
+import com.olaz.instasprite.domain.tool.Tool
+import com.olaz.instasprite.ui.screens.drawingscreen.contract.ToolSelectorEvent
 import com.olaz.instasprite.ui.theme.CatppuccinUI
 
 @Composable
 fun ToolSelector(
     modifier: Modifier = Modifier,
-    viewModel: DrawingScreenViewModel
+    selectedTool: Tool,
+    onToolSelectorEvent: (ToolSelectorEvent) -> Unit,
 ) {
-    val uiState by viewModel.uiState.collectAsState()
     var toolListVisible by remember { mutableStateOf(false) }
     var menuListVisible by remember { mutableStateOf(false) }
-    var saveImageDialogVisible by remember { mutableStateOf(false) }
-    var saveISpriteDialogVisible by remember { mutableStateOf(false) }
-    var loadISpriteDialogVisible by remember { mutableStateOf(false) }
-
-    when {
-        saveImageDialogVisible -> SaveImageDialog(
-            onDismiss = {
-                saveImageDialogVisible = false
-                menuListVisible = false
-            },
-            viewModel = viewModel
-        )
-
-        saveISpriteDialogVisible -> SaveISpriteDialog(
-            onDismiss = {
-                saveISpriteDialogVisible = false
-                menuListVisible = false
-            },
-            viewModel = viewModel
-        )
-
-        loadISpriteDialogVisible -> LoadISpriteDialog(
-            onDismiss = {
-                loadISpriteDialogVisible = false
-                menuListVisible = false
-            },
-            viewModel = viewModel
-        )
-    }
 
     val tools = listOf(
         PencilTool,
@@ -89,8 +58,8 @@ fun ToolSelector(
 
         Box {
             ToolItem(
-                iconResourceId = uiState.selectedTool.icon,
-                contentDescription = uiState.selectedTool.name,
+                iconResourceId = selectedTool.icon,
+                contentDescription = selectedTool.name,
                 selected = true,
                 onClick = { toolListVisible = true }
             )
@@ -112,7 +81,7 @@ fun ToolSelector(
                         },
                         text = { Text(tool.name) },
                         onClick = {
-                            viewModel.selectTool(tool)
+                            onToolSelectorEvent(ToolSelectorEvent.SelectTool(tool))
                             toolListVisible = false
                         }
                     )
@@ -126,7 +95,7 @@ fun ToolSelector(
             contentDescription = "Undo last change",
             selected = false,
             onClick = {
-                viewModel.undo()
+                onToolSelectorEvent(ToolSelectorEvent.Undo)
             }
         )
 
@@ -135,7 +104,7 @@ fun ToolSelector(
             contentDescription = "Redo last change",
             selected = false,
             onClick = {
-                viewModel.redo()
+                onToolSelectorEvent(ToolSelectorEvent.Redo)
             }
         )
 
@@ -157,21 +126,21 @@ fun ToolSelector(
                 DropdownMenuItem(
                     text = { Text(text = "Save") },
                     onClick = {
-                        saveISpriteDialogVisible = true
+                        onToolSelectorEvent(ToolSelectorEvent.OpenSaveISpriteDialog)
                     }
                 )
 
                 DropdownMenuItem(
                     text = { Text(text = "Load") },
                     onClick = {
-                        loadISpriteDialogVisible = true
+                        onToolSelectorEvent(ToolSelectorEvent.OpenLoadISpriteDialog)
                     }
                 )
 
                 DropdownMenuItem(
                     text = { Text(text = "Export image") },
                     onClick = {
-                        saveImageDialogVisible = true
+                        onToolSelectorEvent(ToolSelectorEvent.OpenSaveImageDialog)
                     }
                 )
 

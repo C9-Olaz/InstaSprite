@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -23,7 +22,6 @@ import androidx.compose.ui.unit.dp
 import com.olaz.instasprite.ui.components.composable.ColorPaletteList
 import com.olaz.instasprite.ui.components.composable.ColorPaletteListOptions
 import com.olaz.instasprite.ui.components.dialog.CustomDialog
-import com.olaz.instasprite.ui.screens.drawingscreen.DrawingScreenViewModel
 import com.olaz.instasprite.ui.theme.CatppuccinTypography
 import com.olaz.instasprite.ui.theme.CatppuccinUI
 import kotlinx.coroutines.launch
@@ -31,8 +29,8 @@ import kotlinx.coroutines.launch
 @Composable
 fun LospecImportDialog(
     onDismiss: () -> Unit,
-    onImportSuccess: (List<Color>) -> Unit,
-    viewModel: DrawingScreenViewModel
+    onImportColorsFromLospecUrl: suspend (String) -> List<Color>,
+    onImport: (List<Color>) -> Unit,
 ) {
     var paletteUrl by remember { mutableStateOf("") }
     var previewColors by remember { mutableStateOf<List<Color>?>(null) }
@@ -44,13 +42,13 @@ fun LospecImportDialog(
         onDismiss = onDismiss,
         onConfirm = {
             if (previewColors != null && previewColors!!.isNotEmpty()) {
-                viewModel.updateColorPalette(previewColors!!)
+                onImport(previewColors!!)
                 Toast.makeText(
                     context,
                     "Palette imported successfully!",
                     Toast.LENGTH_SHORT
                 ).show()
-                onImportSuccess(previewColors!!)
+                onDismiss()
             } else {
                 Toast.makeText(
                     context,
@@ -119,7 +117,7 @@ fun LospecImportDialog(
                             }
 
                             try {
-                                val colors = viewModel.importColorsFromLospecUrl(trimmedUrl)
+                                val colors = onImportColorsFromLospecUrl(trimmedUrl)
                                 if (colors.isEmpty()) {
                                     Toast.makeText(context, "No colors found in file", Toast.LENGTH_SHORT).show()
                                     previewColors = null

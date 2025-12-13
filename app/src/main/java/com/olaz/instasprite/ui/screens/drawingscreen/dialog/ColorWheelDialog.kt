@@ -19,7 +19,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -31,12 +30,9 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
@@ -58,7 +54,6 @@ import com.olaz.instasprite.ui.components.composable.ColorItem
 import com.olaz.instasprite.ui.components.composable.ColorPaletteList
 import com.olaz.instasprite.ui.components.composable.ColorPaletteListOptions
 import com.olaz.instasprite.ui.components.dialog.CustomDialog
-import com.olaz.instasprite.ui.screens.drawingscreen.DrawingScreenViewModel
 import com.olaz.instasprite.ui.theme.CatppuccinTypography
 import com.olaz.instasprite.ui.theme.CatppuccinUI
 import kotlinx.coroutines.CoroutineScope
@@ -66,15 +61,14 @@ import kotlinx.coroutines.launch
 import android.graphics.Color as AndroidColor
 
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ColorWheelDialog(
     initialColor: Color = Color.Blue,
+    colorPalette: List<Color>,
     onDismiss: () -> Unit,
     onColorSelected: (Color) -> Unit,
-    viewModel: DrawingScreenViewModel
+    onOpenImportColorPaletteDialog: () -> Unit,
 ) {
-    val colorPaletteState by viewModel.colorPalette.collectAsState()
 
     val hsv = remember {
         val hsvArray = floatArrayOf(0f, 0f, 0f)
@@ -136,27 +130,6 @@ fun ColorWheelDialog(
         }
     }
 
-    var showImportDialog by remember { mutableStateOf(false) }
-
-    if (showImportDialog) {
-        ImportColorPalettesDialog(
-            onDismiss = { showImportDialog = false },
-            onImportPalette = { colors ->
-                viewModel.updateColorPalette(colors)
-                if (colors.isNotEmpty()) {
-                    val firstColor = colors.first()
-                    val hsvArray = floatArrayOf(0f, 0f, 0f)
-                    AndroidColor.colorToHSV(firstColor.toArgb(), hsvArray)
-                    hsv.value = Triple(hsvArray[0], hsvArray[1], hsvArray[2])
-                    selectedColor.value = Color.hsv(hsvArray[0], hsvArray[1], hsvArray[2])
-                    updateInputFields()
-                }
-                showImportDialog = false
-            },
-            viewModel = viewModel
-        )
-    }
-
     CustomDialog(
         onDismiss = onDismiss,
         confirmButtonText = "Select Color",
@@ -201,7 +174,7 @@ fun ColorWheelDialog(
 
                 ColorPaletteList(
                     colorPaletteListOptions = ColorPaletteListOptions(
-                        colors = colorPaletteState,
+                        colors = colorPalette,
                         onColorSelected = { color ->
                             val hsvArray = floatArrayOf(0f, 0f, 0f)
                             AndroidColor.colorToHSV(color.toArgb(), hsvArray)
@@ -283,7 +256,7 @@ fun ColorWheelDialog(
                 }
 
                 Button(
-                    onClick = { showImportDialog = true },
+                    onClick = onOpenImportColorPaletteDialog,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = CatppuccinUI.AccentButtonColor
                     ),

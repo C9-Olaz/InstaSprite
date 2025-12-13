@@ -2,24 +2,18 @@ package com.olaz.instasprite.ui.screens.drawingscreen.dialog
 
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.text.input.KeyboardType
 import com.olaz.instasprite.data.model.InputField
 import com.olaz.instasprite.ui.components.dialog.InputDialog
-import com.olaz.instasprite.ui.screens.drawingscreen.DrawingScreenViewModel
 
 
 @Composable
 fun ResizeCanvasDialog(
     onDismiss: () -> Unit,
-    viewModel: DrawingScreenViewModel
+    currentCanvasWidth: Int,
+    currentCanvasHeight: Int,
+    onResize: (Int, Int) -> Unit,
 ) {
-
-    val canvasState = viewModel.canvasState.collectAsState()
-
-    val canvasWidth = canvasState.value.width
-    val canvasHeight = canvasState.value.height
-
     InputDialog(
         title = "Resize canvas",
         fields = listOf(
@@ -27,7 +21,7 @@ fun ResizeCanvasDialog(
                 label = "Width",
                 placeholder = "Width",
                 suffix = "px",
-                defaultValue = canvasWidth.toString(),
+                defaultValue = currentCanvasWidth.toString(),
                 keyboardType = KeyboardType.Number,
                 validator = { it.toIntOrNull() != null && it.toInt() > 0 },
                 errorMessage = "Must be a number larger than 0"
@@ -36,7 +30,7 @@ fun ResizeCanvasDialog(
                 label = "Height",
                 placeholder = "Height",
                 suffix = "px",
-                defaultValue = canvasHeight.toString(),
+                defaultValue = currentCanvasHeight.toString(),
                 keyboardType = KeyboardType.Number,
                 validator = { it.toIntOrNull() != null && it.toInt() > 0 },
                 errorMessage = "Must be a number larger than 0"
@@ -44,7 +38,7 @@ fun ResizeCanvasDialog(
         ),
         onDismiss = onDismiss,
         onConfirm = {
-            viewModel.resizeCanvas(it[0].toInt(), it[1].toInt())
+            onResize(it[0].toInt(), it[1].toInt())
             onDismiss()
         },
     )
