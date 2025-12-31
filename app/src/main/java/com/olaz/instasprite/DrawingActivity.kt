@@ -11,14 +11,14 @@ import com.olaz.instasprite.data.repository.ISpriteDatabaseRepository
 import com.olaz.instasprite.data.repository.LospecColorPaletteRepository
 import com.olaz.instasprite.data.repository.PixelCanvasRepository
 import com.olaz.instasprite.data.repository.StorageLocationRepository
-import com.olaz.instasprite.ui.screens.drawingscreen.DrawingScreen
-import com.olaz.instasprite.ui.screens.drawingscreen.DrawingScreenViewModel
+import com.olaz.instasprite.ui.screens.drawing.DrawingScreen
+import com.olaz.instasprite.ui.screens.drawing.DrawingViewModel
 import com.olaz.instasprite.ui.theme.InstaSpriteTheme
 import kotlinx.coroutines.launch
 
 class DrawingActivity : ComponentActivity() {
 
-    private lateinit var viewModel: DrawingScreenViewModel
+    private lateinit var viewModel: DrawingViewModel
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -48,7 +48,7 @@ class DrawingActivity : ComponentActivity() {
         val colorPaletteRepository = ColorPaletteRepository(applicationContext)
         val lospecColorPaletteRepository = LospecColorPaletteRepository(applicationContext)
 
-        viewModel = DrawingScreenViewModel(
+        viewModel = DrawingViewModel(
             spriteId = spriteId!!,
             storageLocationRepository = storageLocationRepository,
             pixelCanvasRepository = pixelCanvasRepository,
