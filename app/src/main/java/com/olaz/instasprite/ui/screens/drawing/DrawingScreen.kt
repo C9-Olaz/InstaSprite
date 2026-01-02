@@ -56,6 +56,7 @@ fun DrawingScreen(viewModel: DrawingViewModel) {
     val colorPaletteState by viewModel.colorPaletteState.collectAsState()
     val canvasState by viewModel.canvasState.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
+    val dialogState by viewModel.dialogState.collectAsState()
 
     val maxScale by remember(canvasState.width, canvasState.height) {
         derivedStateOf {
@@ -74,7 +75,7 @@ fun DrawingScreen(viewModel: DrawingViewModel) {
 
     var toolSizeValue by remember { mutableIntStateOf(1) } // Default brush size
 
-    DrawingScreenDialogs(uiState, viewModel)
+    DrawingScreenDialogs(dialogState, viewModel)
 
     Scaffold(
         topBar = {

@@ -13,6 +13,8 @@ import com.olaz.instasprite.data.repository.LospecColorPaletteRepository
 import com.olaz.instasprite.data.repository.PixelCanvasRepository
 import com.olaz.instasprite.data.repository.StorageLocationRepository
 import com.olaz.instasprite.domain.canvashistory.CanvasHistoryManager
+import com.olaz.instasprite.domain.dialog.DialogController
+import com.olaz.instasprite.domain.dialog.DialogControllerImpl
 import com.olaz.instasprite.domain.tool.PencilTool
 import com.olaz.instasprite.domain.tool.Tool
 import com.olaz.instasprite.domain.usecase.LoadFileUseCase
@@ -30,14 +32,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 
 data class DrawingScreenState(
     val selectedTool: Tool,
     val toolSize: Int,
-    val dialogStack: List<DrawingDialog> = emptyList()
 )
 
 class DrawingViewModel(
@@ -47,7 +47,10 @@ class DrawingViewModel(
     private val spriteDataRepository: ISpriteDatabaseRepository,
     private val colorPaletteRepository: ColorPaletteRepository,
     private val lospecColorPaletteRepository: LospecColorPaletteRepository,
-) : ViewModel() {
+    private val dialogController: DialogController<DrawingDialog> = DialogControllerImpl()
+) : ViewModel(),
+    DialogController<DrawingDialog> by dialogController {
+
     private val canvasHistoryManager = CanvasHistoryManager<PixelCanvasState>()
     private val saveFileUseCase = SaveFileUseCase()
     private val loadFileUseCase = LoadFileUseCase()
@@ -133,24 +136,6 @@ class DrawingViewModel(
             is ToolSelectorEvent.OpenLoadISpriteDialog -> openDialog(DrawingDialog.LoadISprite)
             is ToolSelectorEvent.SelectTool -> selectTool(tool = event.tool)
         }
-    }
-
-    fun openDialog(dialog: DrawingDialog) {
-        _uiState.update {
-            it.copy(dialogStack = it.dialogStack + dialog)
-        }
-    }
-
-    fun closeTopDialog() {
-        _uiState.update {
-            if (it.dialogStack.isNotEmpty()) {
-                it.copy(dialogStack = it.dialogStack.dropLast(1))
-            } else it
-        }
-    }
-
-    fun closeAllDialogs() {
-        _uiState.update { it.copy(dialogStack = emptyList()) }
     }
 
     fun setCanvasSize(width: Int, height: Int) {

@@ -8,12 +8,13 @@ import com.olaz.instasprite.ui.screens.drawing.dialog.ResizeCanvasDialog
 import com.olaz.instasprite.ui.screens.drawing.dialog.SaveISpriteDialog
 import com.olaz.instasprite.ui.screens.drawing.dialog.SaveImageDialog
 import androidx.compose.runtime.collectAsState
+import com.olaz.instasprite.domain.dialog.Dialog
 import com.olaz.instasprite.ui.screens.drawing.dialog.ColorWheelDialog
 import com.olaz.instasprite.ui.screens.drawing.dialog.FileImportDialog
 import com.olaz.instasprite.ui.screens.drawing.dialog.ImportOptionsDialog
 import com.olaz.instasprite.ui.screens.drawing.dialog.LospecImportDialog
 
-sealed interface DrawingDialog {
+sealed interface DrawingDialog : Dialog {
     data object SaveImage : DrawingDialog
     data object SaveISprite : DrawingDialog
     data object LoadISprite : DrawingDialog
@@ -26,7 +27,7 @@ sealed interface DrawingDialog {
 
 @Composable
 fun DrawingScreenDialogs(
-    uiState: DrawingScreenState,
+    dialogState: List<DrawingDialog>,
     viewModel: DrawingViewModel
 ) {
     val context = LocalContext.current
@@ -37,7 +38,7 @@ fun DrawingScreenDialogs(
         lastSavedUri = viewModel.getLastSavedLocation()
     }
 
-    uiState.dialogStack.forEach { dialog ->
+    dialogState.forEach { dialog ->
         when (dialog) {
             DrawingDialog.SaveISprite ->
                 SaveISpriteDialog(
@@ -99,22 +100,25 @@ fun DrawingScreenDialogs(
             DrawingDialog.FilePaletteImport ->
                 FileImportDialog(
                     onDismiss = {
-                        // Hacky way to close import dialog, since we need to close down to color wheel
-                        viewModel.closeTopDialog()
                         viewModel.closeTopDialog()
                     },
                     onImportPaletteFromFile = viewModel::importColorsFromFile,
-                    onImport = viewModel::updateColorPalette,
+                    onImport = {
+                        viewModel.updateColorPalette(it)
+                        viewModel.closeTopDialog()
+                    },
                 )
 
             DrawingDialog.LospecPaletteImport ->
                 LospecImportDialog(
                     onDismiss = {
                         viewModel.closeTopDialog()
-                        viewModel.closeTopDialog()
                     },
                     onImportColorsFromLospecUrl = viewModel::importColorsFromLospecUrl,
-                    onImport = viewModel::updateColorPalette,
+                    onImport = {
+                        viewModel.updateColorPalette(it)
+                        viewModel.closeTopDialog()
+                    }
                 )
         }
     }
