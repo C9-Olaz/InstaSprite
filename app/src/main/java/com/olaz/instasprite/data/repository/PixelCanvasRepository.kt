@@ -4,8 +4,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import com.olaz.instasprite.data.model.ISpriteData
 import com.olaz.instasprite.data.model.PixelCanvasModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
 
 class PixelCanvasRepository(var model: PixelCanvasModel) {
     var width: Int
@@ -18,13 +16,9 @@ class PixelCanvasRepository(var model: PixelCanvasModel) {
 
     private var pixels = MutableList(width * height){ Color.Transparent }
 
-    private val _pixelChanged = MutableStateFlow(0L)
-    val pixelChanged = _pixelChanged.asStateFlow()
-
     fun setPixel(row: Int, col: Int, color: Color) {
         if (row in 0 until height && col in 0 until width) {
             pixels[row * width + col] = color
-            updatePixelChangedTrigger()
         }
     }
 
@@ -77,7 +71,6 @@ class PixelCanvasRepository(var model: PixelCanvasModel) {
             colors.forEachIndexed { index, color ->
                 pixels[index] = color
             }
-            updatePixelChangedTrigger()
         }
     }
 
@@ -89,14 +82,9 @@ class PixelCanvasRepository(var model: PixelCanvasModel) {
         } else {
             MutableList(width * height) { Color.Transparent }
         }
-        updatePixelChangedTrigger()
     }
 
     fun getISpriteData(): ISpriteData {
         return ISpriteData(width = width, height = height, pixelsData =  pixels.map { it.toArgb() })
-    }
-
-    private fun updatePixelChangedTrigger() {
-        _pixelChanged.value = System.nanoTime()
     }
 }

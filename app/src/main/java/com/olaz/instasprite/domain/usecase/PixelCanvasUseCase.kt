@@ -124,7 +124,4 @@ class PixelCanvasUseCase(
 
         pixelCanvasRepository.setCanvas(newWidth, newHeight, newPixels)
     }
-
-
-    val pixelChanged = pixelCanvasRepository.pixelChanged
 }

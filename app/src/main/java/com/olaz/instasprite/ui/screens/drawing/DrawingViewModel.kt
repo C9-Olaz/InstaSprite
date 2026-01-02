@@ -208,6 +208,8 @@ class DrawingViewModel(
                 width = it.width,
                 height = it.height,
             )
+
+            refreshCanvasState()
         }
     }
 
@@ -218,6 +220,8 @@ class DrawingViewModel(
                 width = it.width,
                 height = it.height,
             )
+
+            refreshCanvasState()
         }
     }
 
