@@ -1,6 +1,9 @@
 package com.olaz.instasprite
 
+import android.content.Context
+import android.os.Build
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.lifecycle.lifecycleScope
@@ -21,16 +24,6 @@ class DrawingActivity : ComponentActivity() {
     private lateinit var viewModel: DrawingViewModel
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        val display = window.windowManager.defaultDisplay
-        val modes = display.supportedModes
-        val highest = modes.maxByOrNull { it.refreshRate }
-
-        highest?.let {
-            val params = window.attributes
-            params.preferredDisplayModeId = it.modeId
-            window.attributes = params
-        }
 
         val spriteId = intent?.getStringExtra(EXTRA_SPRITE_ID)
         require(spriteId != "") { "Sprite ID must be passed to DrawingActivity" }
