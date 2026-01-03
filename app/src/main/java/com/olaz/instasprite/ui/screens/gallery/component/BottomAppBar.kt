@@ -35,14 +35,13 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.olaz.instasprite.R
-import com.olaz.instasprite.ui.screens.gallery.GalleryViewModel
+import com.olaz.instasprite.ui.screens.gallery.contract.BottomBarEvent
 import com.olaz.instasprite.ui.theme.CatppuccinUI
 import com.olaz.instasprite.utils.rememberBottomBarVisibleState
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeBottomBar(
-    viewModel: GalleryViewModel,
+    onBottomBarEvent: (BottomBarEvent) -> Unit,
     lazyListState: LazyListState,
     modifier: Modifier = Modifier
 ) {
@@ -88,14 +87,14 @@ fun HomeBottomBar(
                 BottomBarItem(
                     imageVector = Icons.Default.Search,
                     onClick = {
-                        viewModel.toggleSearchBar()
+                        onBottomBarEvent(BottomBarEvent.ToggleSearchBar)
                     },
                     iconTint = CatppuccinUI.TextColorLight
                 )
                 BottomBarItem(
                     iconResourceId = R.drawable.ic_sort,
                     onClick = {
-                        viewModel.toggleSelectSortOptionDialog()
+                        onBottomBarEvent(BottomBarEvent.OpenSelectSortOption)
                     },
                     iconTint = CatppuccinUI.TextColorLight
                 )

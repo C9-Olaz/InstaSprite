@@ -3,7 +3,6 @@ package com.olaz.instasprite.ui.screens.gallery.component
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -31,11 +30,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,139 +46,62 @@ import com.olaz.instasprite.data.model.ISpriteData
 import com.olaz.instasprite.data.model.ISpriteWithMetaData
 import com.olaz.instasprite.data.model.SpriteMetaData
 import com.olaz.instasprite.ui.components.composable.CanvasPreviewer
-import com.olaz.instasprite.ui.screens.gallery.GalleryViewModel
-import com.olaz.instasprite.ui.screens.gallery.SpriteListOrder
-import com.olaz.instasprite.ui.screens.gallery.dialog.DeleteSpriteConfirmDialog
-import com.olaz.instasprite.ui.screens.gallery.dialog.RenameDialog
+import com.olaz.instasprite.ui.screens.gallery.contract.SpriteListEvent
 import com.olaz.instasprite.ui.theme.CatppuccinUI
-import kotlinx.coroutines.launch
 
 
 @Composable
 fun SpriteList(
-    viewModel: GalleryViewModel,
-    spritesWithMetaData: List<ISpriteWithMetaData>,
+    onSpriteListEvent: (SpriteListEvent) -> Unit,
+    spriteList: List<ISpriteWithMetaData>,
     modifier: Modifier = Modifier,
     lazyListState: LazyListState = rememberLazyListState(),
 ) {
-    val order = remember(viewModel.spriteListOrder) { viewModel.spriteListOrder }
-
-    val filteredSprites = remember(viewModel.searchQuery, spritesWithMetaData) {
-        spritesWithMetaData.filter {
-            val name = it.meta?.spriteName ?: ""
-            name.contains(viewModel.searchQuery, ignoreCase = true)
-        }
-    }
-
-    val sortedSprites = remember(order, filteredSprites) {
-        when (order) {
-            SpriteListOrder.Name ->
-                filteredSprites.sortedBy { it.meta?.spriteName?.lowercase() ?: "" }
-
-            SpriteListOrder.NameDesc ->
-                filteredSprites.sortedByDescending { it.meta?.spriteName?.lowercase() ?: "" }
-
-            SpriteListOrder.DateCreated ->
-                filteredSprites.sortedBy { it.meta?.createdAt ?: 0L }
-
-            SpriteListOrder.DateCreatedDesc ->
-                filteredSprites.sortedByDescending { it.meta?.createdAt ?: 0L }
-
-            SpriteListOrder.LastModified ->
-                filteredSprites.sortedBy { it.meta?.lastModifiedAt ?: 0L }
-
-            SpriteListOrder.LastModifiedDesc ->
-                filteredSprites.sortedByDescending { it.meta?.lastModifiedAt ?: 0L }
-        }
-    }
-    viewModel.spriteList = sortedSprites
-
-    val coroutineScope = rememberCoroutineScope()
-
-    LaunchedEffect(spritesWithMetaData, sortedSprites) {
-        viewModel.lastEditedSpriteId?.let { editedId ->
-            val index = sortedSprites.indexOfFirst { it.sprite.id == editedId }
-            if (index != -1) {
-                coroutineScope.launch {
-                    lazyListState.animateScrollToItem(index)
-                }
-            }
-        }
-        viewModel.lastEditedSpriteId = null
-    }
-
-    LaunchedEffect(viewModel.searchQuery) {
-        coroutineScope.launch {
-            lazyListState.animateScrollToItem(0)
-        }
-    }
-
-    LaunchedEffect(viewModel.lastSpriteSeenInPager) {
-        viewModel.lastSpriteSeenInPager?.let { sprite ->
-            val index = sortedSprites.indexOfFirst { it.sprite.id == sprite.id }
-            if (index != -1) {
-                coroutineScope.launch {
-                    lazyListState.animateScrollToItem(index)
-                }
-            }
-            viewModel.lastSpriteSeenInPager = null
-        }
-    }
+    val context = LocalContext.current
 
     LazyColumn(
         state = lazyListState,
         modifier = modifier
     ) {
         items(
-            items = sortedSprites,
+            items = spriteList,
             key = { it.sprite.id }
         ) { (sprite, meta) ->
             SpriteCard(
+                onDelete = {
+                    onSpriteListEvent(SpriteListEvent.OpenDeleteDialog(meta!!.spriteName, sprite.id))
+                },
+                onRename = {
+                    onSpriteListEvent(SpriteListEvent.OpenRenameDialog(sprite.id))
+
+                },
+                onEdit = {
+                    onSpriteListEvent(SpriteListEvent.OpenDrawingActivity(sprite, context))
+                },
+                onClick = {
+                    onSpriteListEvent(SpriteListEvent.OpenPager(sprite))
+                },
                 sprite = sprite,
                 meta = meta,
-                viewModel = viewModel,
                 modifier = Modifier.animateItem()
             )
         }
     }
 }
 
-
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun SpriteCard(
+private fun SpriteCard(
+    onDelete: () -> Unit = {},
+    onRename: () -> Unit = {},
+    onEdit: () -> Unit = {},
+    onClick: () -> Unit = {},
     sprite: ISpriteData,
     meta: SpriteMetaData?,
-    viewModel: GalleryViewModel,
     modifier: Modifier = Modifier,
 ) {
-    val coroutineScope = rememberCoroutineScope()
-    val context = LocalContext.current
 
     var showDropdown by remember { mutableStateOf(false) }
-    var showDeleteDialog by remember { mutableStateOf(false) }
-    var showRenameDialog by remember { mutableStateOf(false) }
     var isVisible by remember { mutableStateOf(true) }
-
-    when {
-        showRenameDialog -> RenameDialog(
-            viewModel = viewModel,
-            spriteId = sprite.id,
-            onDismiss = { showRenameDialog = false },
-        )
-
-        showDeleteDialog -> DeleteSpriteConfirmDialog(
-            spriteName = meta?.spriteName ?: "Untitled",
-            onDismiss = { showDeleteDialog = false },
-            onConfirm = {
-                coroutineScope.launch {
-                    isVisible = false
-                    viewModel.deleteSpriteByIdDelay(sprite.id, 0)
-                }
-                showDeleteDialog = false
-            }
-        )
-    }
 
     AnimatedVisibility(
         visible = isVisible,
@@ -232,15 +152,16 @@ fun SpriteCard(
                         expanded = showDropdown,
                         onDismissRequest = { showDropdown = false },
                         onDelete = {
-                            showDeleteDialog = true
+                            onDelete()
                             showDropdown = false
                         },
                         onEdit = {
-                            viewModel.openDrawingActivity(context, sprite)
+                            onEdit()
                             showDropdown = false
                         },
                         onRename = {
-                            showRenameDialog = true
+                            onRename()
+                            showDropdown = false
                         }
                     )
                 }
@@ -252,7 +173,7 @@ fun SpriteCard(
                     .fillMaxWidth(0.95f)
                     .align(Alignment.CenterHorizontally)
                     .clip(RoundedCornerShape(12.dp)),
-                onClick = { viewModel.toggleImagePager(sprite) }
+                onClick = onClick
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -261,7 +182,7 @@ fun SpriteCard(
 }
 
 @Composable
-fun SpriteDropdownMenu(
+private fun SpriteDropdownMenu(
     expanded: Boolean,
     modifier: Modifier = Modifier,
     onDismissRequest: () -> Unit,

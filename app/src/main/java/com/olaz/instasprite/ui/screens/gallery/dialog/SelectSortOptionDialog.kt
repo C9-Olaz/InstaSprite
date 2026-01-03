@@ -28,11 +28,11 @@ import com.olaz.instasprite.ui.screens.gallery.SpriteListOrder
 import com.olaz.instasprite.ui.theme.CatppuccinUI
 
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SelectSortOptionDialog(
+    onSortOrderSelected: (SpriteListOrder) -> Unit,
+    spriteListOrder: SpriteListOrder,
     onDismiss: () -> Unit,
-    viewModel: GalleryViewModel,
 ) {
     val options = mapOf(
         "A - Z" to SpriteListOrder.Name,
@@ -43,7 +43,7 @@ fun SelectSortOptionDialog(
         "Date Modified Desc" to SpriteListOrder.LastModifiedDesc
     )
 
-    val selectedOption = remember { mutableStateOf(viewModel.spriteListOrder) }
+    val selectedOption = remember { mutableStateOf(spriteListOrder) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -75,8 +75,7 @@ fun SelectSortOptionDialog(
                                 selected = (sortOrder == selectedOption.value),
                                 onClick = {
                                     selectedOption.value = sortOrder
-                                    viewModel.spriteListOrder = sortOrder
-                                    viewModel.saveSortSetting(sortOrder)
+                                    onSortOrderSelected(sortOrder)
                                     onDismiss()
                                 },
                                 role = Role.RadioButton

@@ -22,13 +22,14 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
-import com.olaz.instasprite.ui.screens.gallery.GalleryViewModel
+import com.olaz.instasprite.ui.screens.gallery.contract.SearchBarContract
 import com.olaz.instasprite.ui.theme.CatppuccinUI
 
 @Composable
 fun SearchBar(
+    onSearchBarEvent: (SearchBarContract) -> Unit,
+    searchQuery: String,
     modifier: Modifier = Modifier,
-    viewModel: GalleryViewModel
 ) {
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
@@ -40,24 +41,30 @@ fun SearchBar(
     }
 
     BackHandler(enabled = isFocused) {
-        if (viewModel.searchQuery.isEmpty()) {
-            viewModel.toggleSearchBar()
+        if (searchQuery.isEmpty()) {
+            onSearchBarEvent(SearchBarContract.ToggleSearchBar)
         }
         focusManager.clearFocus()
     }
 
     TextField(
-        value = viewModel.searchQuery,
-        onValueChange = viewModel::updateSearchQuery,
+        value = searchQuery,
+        onValueChange = {
+            onSearchBarEvent(
+                SearchBarContract.UpdateSearchQuery(
+                    it
+                )
+            )
+        },
         placeholder = { Text(text = "Search sprites", color = CatppuccinUI.Subtext0Color) },
         singleLine = true,
         trailingIcon = {
             IconButton(
                 onClick = {
-                    if (viewModel.searchQuery.isEmpty()) {
-                        viewModel.toggleSearchBar()
+                    if (searchQuery.isEmpty()) {
+                        onSearchBarEvent(SearchBarContract.ToggleSearchBar)
                     }
-                    viewModel.updateSearchQuery("")
+                    onSearchBarEvent(SearchBarContract.UpdateSearchQuery(""))
                 },
             ) {
                 Icon(

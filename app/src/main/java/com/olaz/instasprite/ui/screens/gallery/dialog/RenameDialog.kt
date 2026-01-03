@@ -4,12 +4,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.text.input.KeyboardType
 import com.olaz.instasprite.data.model.InputField
 import com.olaz.instasprite.ui.components.dialog.InputDialog
-import com.olaz.instasprite.ui.screens.gallery.GalleryViewModel
 
 @Composable
 fun RenameDialog(
     spriteId: String,
-    viewModel: GalleryViewModel,
+    onSpriteRename: (spriteId: String, newName: String) -> Unit,
     onDismiss: () -> Unit,
 ) {
     InputDialog(
@@ -26,7 +25,7 @@ fun RenameDialog(
         onDismiss = onDismiss,
         onConfirm = { values ->
             val newName = values[0]
-            viewModel.renameSprite(spriteId, newName)
+            onSpriteRename(spriteId, newName)
             onDismiss()
         }
     )

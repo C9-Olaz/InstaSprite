@@ -17,10 +17,12 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -38,11 +40,11 @@ import com.olaz.instasprite.ui.screens.gallery.component.HomeFab
 import com.olaz.instasprite.ui.screens.gallery.component.ImagePagerOverlay
 import com.olaz.instasprite.ui.screens.gallery.component.SearchBar
 import com.olaz.instasprite.ui.screens.gallery.component.SpriteList
-import com.olaz.instasprite.ui.screens.gallery.dialog.CreateCanvasDialog
-import com.olaz.instasprite.ui.screens.gallery.dialog.SelectSortOptionDialog
 import com.olaz.instasprite.ui.theme.CatppuccinUI
 import com.olaz.instasprite.ui.theme.InstaSpriteTheme
 import com.olaz.instasprite.utils.UiUtils
+import kotlinx.coroutines.launch
+import kotlin.collections.indexOfFirst
 
 @Composable
 fun GalleryScreen(viewModel: GalleryViewModel) {
@@ -50,27 +52,51 @@ fun GalleryScreen(viewModel: GalleryViewModel) {
     UiUtils.SetNavigationBarColor(CatppuccinUI.BottomBarColor)
 
     val uiState by viewModel.uiState.collectAsState()
+    val dialogState by viewModel.dialogState.collectAsState()
+    val sprites by viewModel.sprites.collectAsState()
+    val sortedSprites by viewModel.sortedAndFilteredSprites.collectAsState()
+    val searchQuery by viewModel.searchQuery.collectAsState()
 
-    if (uiState.showCreateCanvasDialog) {
-        CreateCanvasDialog(
-            onDismiss = {
-                viewModel.toggleCreateCanvasDialog()
-            },
-        )
+    val scope = rememberCoroutineScope()
+
+    val lazyListState = rememberLazyListState()
+    val firstItemVisible by remember { derivedStateOf { lazyListState.firstVisibleItemIndex > 0 } }
+
+    LaunchedEffect(sprites, sortedSprites) {
+        viewModel.lastEditedSpriteId?.let { editedId ->
+            val index = sortedSprites.indexOfFirst { it.sprite.id == editedId }
+            if (index != -1) {
+                scope.launch {
+                    lazyListState.animateScrollToItem(index)
+                }
+            }
+        }
+        viewModel.lastEditedSpriteId = null
     }
 
-    if (uiState.showSelectSortOptionDialog) {
-        SelectSortOptionDialog(
-            viewModel = viewModel,
-            onDismiss = {
-                viewModel.toggleSelectSortOptionDialog()
-            },
-        )
+    LaunchedEffect(viewModel.searchQuery) {
+        scope.launch {
+            lazyListState.animateScrollToItem(0)
+        }
+    }
+
+    LaunchedEffect(viewModel.lastSpriteSeenInPager) {
+        viewModel.lastSpriteSeenInPager?.let { sprite ->
+            val index = sortedSprites.indexOfFirst { it.sprite.id == sprite.id }
+            if (index != -1) {
+                scope.launch {
+                    lazyListState.animateScrollToItem(index)
+                }
+            }
+            viewModel.lastSpriteSeenInPager = null
+        }
     }
 
     if (uiState.showImagePager) {
         ImagePagerOverlay(
-            viewModel = viewModel,
+            onImagePagerEvent = viewModel::onImagePagerEvent,
+            spriteList = sortedSprites,
+            startIndex = viewModel.currentSelectedSpriteIndex,
             onDismiss = { lastSpriteSeen ->
                 viewModel.toggleImagePager(null)
                 viewModel.lastSpriteSeenInPager = lastSpriteSeen
@@ -78,10 +104,7 @@ fun GalleryScreen(viewModel: GalleryViewModel) {
         )
     }
 
-    val sprites by viewModel.sprites.collectAsState()
-
-    val lazyListState = rememberLazyListState()
-    val firstItemVisible by remember { derivedStateOf { lazyListState.firstVisibleItemIndex > 0 } }
+    GalleryScreenDialogs(dialogState, viewModel)
 
     Box {
         Scaffold(
@@ -110,13 +133,14 @@ fun GalleryScreen(viewModel: GalleryViewModel) {
                         .height(56.dp)
                 ) {
                     SearchBar(
-                        viewModel = viewModel,
+                        onSearchBarEvent = viewModel::onSearchBarEvent,
+                        searchQuery = searchQuery,
                     )
                 }
             },
             bottomBar = {
                 HomeBottomBar(
-                    viewModel = viewModel,
+                    onBottomBarEvent = viewModel::onBottomBarEvent,
                     lazyListState = lazyListState,
                     modifier = Modifier.height(56.dp)
                 )
@@ -131,8 +155,8 @@ fun GalleryScreen(viewModel: GalleryViewModel) {
                     .animateContentSize()
             ) {
                 SpriteList(
-                    viewModel = viewModel,
-                    spritesWithMetaData = sprites,
+                    onSpriteListEvent = viewModel::onSpriteListEvent,
+                    spriteList = sortedSprites,
                     lazyListState = lazyListState,
                     modifier = Modifier.padding(horizontal = 10.dp)
                 )
@@ -161,7 +185,7 @@ fun GalleryScreen(viewModel: GalleryViewModel) {
             contentAlignment = Alignment.Center,
         ) {
             HomeFab(
-                onClick = { viewModel.toggleCreateCanvasDialog() },
+                onClick = { viewModel.openDialog(GalleryDialog.CreateCanvas) },
                 lazyListState = lazyListState
             )
         }

@@ -19,7 +19,9 @@ import com.olaz.instasprite.ui.screens.gallery.GalleryViewModel
 fun SaveImageDialog(
     spriteName: String,
     iSpriteData: ISpriteData,
-    viewModel: GalleryViewModel,
+    lastSavedUri: Uri?,
+    onFolderSelected: (Uri) -> Unit,
+    onSaved: (ISpriteData, Uri, fileName: String, scale: Int) -> Boolean,
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -28,7 +30,7 @@ fun SaveImageDialog(
     var folderUri by remember { mutableStateOf<Uri?>(null) }
 
     LaunchedEffect(Unit) {
-        folderUri = viewModel.getLastSavedLocation()
+        folderUri = lastSavedUri
     }
 
     SaveFileDialog(
@@ -56,12 +58,12 @@ fun SaveImageDialog(
         lastSavedUri = folderUri,
         onFolderSelected = { uri ->
             folderUri = uri
-            viewModel.setLastSavedLocation(uri)
+            onFolderSelected(uri)
         },
         onSave = {
             folderUri?.let { uri ->
                 val scale = scalePercent.toIntOrNull()?.coerceIn(25, 20000) ?: 100
-                val success = viewModel.saveImage(context, iSpriteData, uri, "$fileName.png", scale)
+                val success = onSaved(iSpriteData, uri, fileName, scale)
                 Toast.makeText(
                     context,
                     if (success) "Image saved successfully!" else "Failed to save image",

@@ -35,6 +35,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,14 +49,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
-import androidx.lifecycle.viewModelScope
 import com.olaz.instasprite.data.model.ISpriteData
 import com.olaz.instasprite.data.model.ISpriteWithMetaData
 import com.olaz.instasprite.domain.export.ImageExporter
 import com.olaz.instasprite.ui.components.composable.ImageZoomableOverlay
-import com.olaz.instasprite.ui.screens.gallery.GalleryViewModel
-import com.olaz.instasprite.ui.screens.gallery.dialog.DeleteSpriteConfirmDialog
-import com.olaz.instasprite.ui.screens.gallery.dialog.SaveImageDialog
+import com.olaz.instasprite.ui.screens.gallery.contract.ImagePagerEvent
 import com.olaz.instasprite.ui.theme.CatppuccinUI
 import com.olaz.instasprite.utils.toDateString
 import kotlinx.coroutines.delay
@@ -63,13 +61,12 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun ImagePagerOverlay(
-    viewModel: GalleryViewModel,
+    onImagePagerEvent: (ImagePagerEvent) -> Unit,
+    spriteList: List<ISpriteWithMetaData>,
+    startIndex: Int,
     onDismiss: (ISpriteData?) -> Unit
 ) {
     val context = LocalContext.current
-
-    val spriteList = viewModel.spriteList
-    val startIndex = viewModel.currentSelectedSpriteIndex
 
     if (spriteList.isEmpty()) {
         return
@@ -83,29 +80,6 @@ fun ImagePagerOverlay(
     val currentSprite = spriteList.getOrNull(pagerState.currentPage)
 
     var zoomedPageIndex by remember { mutableStateOf<Int?>(null) }
-
-    var showDeleteDialog by remember { mutableStateOf(false) }
-    var showSaveImageDialog by remember { mutableStateOf(false) }
-
-    if (showDeleteDialog) {
-        DeleteSpriteConfirmDialog(
-            spriteName = currentSprite!!.meta!!.spriteName,
-            onConfirm = {
-                viewModel.deleteSpriteById(currentSprite.sprite.id)
-                showDeleteDialog = false
-            },
-            onDismiss = { showDeleteDialog = false }
-        )
-    }
-
-    if (showSaveImageDialog) {
-        SaveImageDialog(
-            spriteName = currentSprite!!.meta!!.spriteName,
-            iSpriteData = currentSprite.sprite,
-            viewModel = viewModel,
-            onDismiss = { showSaveImageDialog = false }
-        )
-    }
 
     Dialog(
         onDismissRequest = {
@@ -121,19 +95,33 @@ fun ImagePagerOverlay(
             topBar = {
                 TopBar(
                     onDismiss = { onDismiss(currentSprite?.sprite) },
-                    onDeleteButtonTap = { showDeleteDialog = true }
+                    onDeleteButtonTap = {
+                        currentSprite?.meta?.let {
+                            onImagePagerEvent(
+                                ImagePagerEvent.OpenDeleteDialog(
+                                    it.spriteName,
+                                    it.spriteId
+                                )
+                            )
+                        }
+                    }
                 )
             },
             bottomBar = {
                 BottomBar(
                     onEditButtonTap = {
-                        viewModel.viewModelScope.launch {
-                            delay(200)
-                            onDismiss(null)
+                        currentSprite?.let {
+                            onImagePagerEvent(
+                                ImagePagerEvent.OpenDrawingActivity(
+                                    it.sprite,
+                                    context
+                                )
+                            )
                         }
-                        viewModel.openDrawingActivity(context, currentSprite!!.sprite)
                     },
-                    onSaveImageTap = { showSaveImageDialog = true },
+                    onSaveImageTap = {
+                        onImagePagerEvent(ImagePagerEvent.OpenSaveImageDialog(currentSprite!!))
+                    },
                     spriteWithMetaData = currentSprite,
                     modifier = Modifier
                         .height(180.dp)
@@ -144,6 +132,7 @@ fun ImagePagerOverlay(
 
             HorizontalPager(
                 state = pagerState,
+                key = { index -> spriteList[index].sprite.id },
                 modifier = Modifier
                     .fillMaxSize()
                     .background(CatppuccinUI.BackgroundColorDarker)

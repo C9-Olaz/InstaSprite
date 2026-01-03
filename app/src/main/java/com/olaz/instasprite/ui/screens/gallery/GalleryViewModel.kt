@@ -16,14 +16,22 @@ import com.olaz.instasprite.data.model.ISpriteWithMetaData
 import com.olaz.instasprite.data.repository.ISpriteDatabaseRepository
 import com.olaz.instasprite.data.repository.SortSettingRepository
 import com.olaz.instasprite.data.repository.StorageLocationRepository
+import com.olaz.instasprite.domain.dialog.DialogController
+import com.olaz.instasprite.domain.dialog.DialogControllerImpl
 import com.olaz.instasprite.domain.usecase.SaveFileUseCase
+import com.olaz.instasprite.ui.screens.gallery.contract.BottomBarEvent
+import com.olaz.instasprite.ui.screens.gallery.contract.ImagePagerEvent
+import com.olaz.instasprite.ui.screens.gallery.contract.SearchBarContract
+import com.olaz.instasprite.ui.screens.gallery.contract.SpriteListEvent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 enum class SpriteListOrder {
@@ -36,8 +44,6 @@ enum class SpriteListOrder {
 }
 
 data class GalleryState(
-    val showCreateCanvasDialog: Boolean = false,
-    val showSelectSortOptionDialog: Boolean = false,
     val showSearchBar: Boolean = false,
     val showImagePager: Boolean = false
 )
@@ -46,7 +52,9 @@ class GalleryViewModel(
     private val spriteDatabaseRepository: ISpriteDatabaseRepository,
     private val sortSettingRepository: SortSettingRepository,
     private val storageLocationRepository: StorageLocationRepository,
-) : ViewModel() {
+    private val dialogController: DialogController<GalleryDialog> = DialogControllerImpl()
+) : ViewModel(),
+    DialogController<GalleryDialog> by dialogController {
     private val saveFileUseCase = SaveFileUseCase()
 
     private val _uiState = MutableStateFlow(
@@ -62,35 +70,105 @@ class GalleryViewModel(
                 emptyList()
             )
 
-    var searchQuery by mutableStateOf("")
-        private set
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery = _searchQuery.asStateFlow()
 
     private val _lastSavedLocation = MutableStateFlow<Uri?>(null)
+    val lastSavedLocation: StateFlow<Uri?> = _lastSavedLocation.asStateFlow()
+
+    private val _spriteListOrder = MutableStateFlow(SpriteListOrder.DateCreatedDesc)
+    val spriteListOrder = _spriteListOrder.asStateFlow()
 
     var lastEditedSpriteId by mutableStateOf<String?>(null)
-    var spriteListOrder by mutableStateOf(SpriteListOrder.LastModifiedDesc)
-    var spriteList by mutableStateOf(emptyList<ISpriteWithMetaData>())
     var currentSelectedSpriteIndex by mutableIntStateOf(0)
     var lastSpriteSeenInPager by mutableStateOf<ISpriteData?>(null)
+
+    val sortedAndFilteredSprites: StateFlow<List<ISpriteWithMetaData>> = combine(
+        sprites,
+        _searchQuery,
+        _spriteListOrder
+    ) { list, query, order ->
+
+        val filtered = if (query.isBlank()) {
+            list
+        } else {
+            list.filter {
+                it.meta?.spriteName?.contains(query, ignoreCase = true) == true
+            }
+        }
+
+        when (order) {
+            SpriteListOrder.Name -> filtered.sortedBy { it.meta?.spriteName?.lowercase() ?: "" }
+            SpriteListOrder.NameDesc -> filtered.sortedByDescending { it.meta?.spriteName?.lowercase() ?: "" }
+            SpriteListOrder.DateCreated -> filtered.sortedBy { it.meta?.createdAt ?: 0L }
+            SpriteListOrder.DateCreatedDesc -> filtered.sortedByDescending { it.meta?.createdAt ?: 0L }
+            SpriteListOrder.LastModified -> filtered.sortedBy { it.meta?.lastModifiedAt ?: 0L }
+            SpriteListOrder.LastModifiedDesc -> filtered.sortedByDescending { it.meta?.lastModifiedAt ?: 0L }
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = emptyList()
+    )
 
     init {
         viewModelScope.launch {
             sortSettingRepository.getLastSortSetting()?.let {
-                spriteListOrder = it
+                _spriteListOrder.value = it
             }
         }
     }
 
-    fun toggleCreateCanvasDialog() {
-        _uiState.value = _uiState.value.copy(
-            showCreateCanvasDialog = !_uiState.value.showCreateCanvasDialog
-        )
+    fun onBottomBarEvent(event: BottomBarEvent) {
+        when (event) {
+            is BottomBarEvent.ToggleSearchBar -> toggleSearchBar()
+            is BottomBarEvent.OpenSelectSortOption -> openDialog(GalleryDialog.SelectSortOption)
+        }
     }
 
-    fun toggleSelectSortOptionDialog() {
-        _uiState.value = _uiState.value.copy(
-            showSelectSortOptionDialog = !_uiState.value.showSelectSortOptionDialog
-        )
+    fun onImagePagerEvent(event: ImagePagerEvent) {
+        when (event) {
+            is ImagePagerEvent.OpenDeleteDialog -> openDialog(
+                GalleryDialog.DeleteSpriteConfirm(
+                    spriteName = event.spriteName,
+                    spriteId = event.spriteId
+                )
+            )
+
+            is ImagePagerEvent.OpenDrawingActivity -> openDrawingActivity(
+                event.context,
+                event.sprite
+            )
+
+            is ImagePagerEvent.OpenSaveImageDialog -> openDialog(GalleryDialog.SaveImage(event.sprite))
+        }
+    }
+
+    fun onSearchBarEvent(event: SearchBarContract) {
+        when (event) {
+            is SearchBarContract.ToggleSearchBar -> toggleSearchBar()
+            is SearchBarContract.UpdateSearchQuery -> updateSearchQuery(event.query)
+        }
+    }
+
+    fun onSpriteListEvent(event: SpriteListEvent) {
+        when (event) {
+            is SpriteListEvent.OpenDeleteDialog ->
+                openDialog(
+                    GalleryDialog.DeleteSpriteConfirm(
+                        spriteName = event.spriteName,
+                        spriteId = event.spriteId
+                    )
+                )
+
+            is SpriteListEvent.OpenDrawingActivity -> openDrawingActivity(
+                event.context,
+                event.sprite
+            )
+
+            is SpriteListEvent.OpenPager -> toggleImagePager(event.sprite)
+            is SpriteListEvent.OpenRenameDialog -> openDialog(GalleryDialog.Rename(event.spriteId))
+        }
     }
 
     fun toggleSearchBar() {
@@ -103,7 +181,10 @@ class GalleryViewModel(
         _uiState.value = _uiState.value.copy(
             showImagePager = !_uiState.value.showImagePager
         )
-        currentSelectedSpriteIndex = spriteList.map { it.sprite }.indexOf(selectedSprite)
+
+        currentSelectedSpriteIndex = sortedAndFilteredSprites.value.indexOfFirst {
+            it.sprite.id == selectedSprite?.id
+        }
     }
 
     suspend fun getLastSavedLocation(): Uri? {
@@ -179,6 +260,10 @@ class GalleryViewModel(
     }
 
     fun updateSearchQuery(query: String) {
-        searchQuery = query
+        _searchQuery.value = query
+    }
+
+    fun setSpriteListOrder(order: SpriteListOrder) {
+        _spriteListOrder.value = order
     }
 }
