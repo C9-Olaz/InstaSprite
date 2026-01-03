@@ -11,8 +11,8 @@ import com.olaz.instasprite.data.repository.ISpriteDatabaseRepository
 import com.olaz.instasprite.data.repository.LospecColorPaletteRepository
 import com.olaz.instasprite.data.repository.PixelCanvasRepository
 import com.olaz.instasprite.data.repository.StorageLocationRepository
-import com.olaz.instasprite.ui.screens.drawing.DrawingScreen
-import com.olaz.instasprite.ui.screens.drawing.DrawingViewModel
+import com.olaz.instasprite.ui.drawing.DrawingScreen
+import com.olaz.instasprite.ui.drawing.DrawingViewModel
 import com.olaz.instasprite.ui.theme.InstaSpriteTheme
 import kotlinx.coroutines.launch
 

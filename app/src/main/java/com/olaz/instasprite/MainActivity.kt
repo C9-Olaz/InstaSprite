@@ -7,8 +7,8 @@ import com.olaz.instasprite.data.database.AppDatabase
 import com.olaz.instasprite.data.repository.ISpriteDatabaseRepository
 import com.olaz.instasprite.data.repository.SortSettingRepository
 import com.olaz.instasprite.data.repository.StorageLocationRepository
-import com.olaz.instasprite.ui.screens.gallery.GalleryScreen
-import com.olaz.instasprite.ui.screens.gallery.GalleryViewModel
+import com.olaz.instasprite.ui.gallery.GalleryScreen
+import com.olaz.instasprite.ui.gallery.GalleryViewModel
 import com.olaz.instasprite.ui.theme.InstaSpriteTheme
 
 class MainActivity : ComponentActivity() {
