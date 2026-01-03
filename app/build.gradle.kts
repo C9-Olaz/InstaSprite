@@ -68,6 +68,7 @@ dependencies {
     // --- Dependency Injection
     implementation(libs.hilt.android)
     ksp(libs.hilt.android.compiler)
+    implementation(libs.androidx.hilt.navigation.compose)
 
     // --- UI Utilities & Theme ---
     implementation(libs.accompanist.systemuicontroller)
