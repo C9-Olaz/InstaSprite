@@ -4,8 +4,10 @@ import android.content.Context
 import android.net.Uri
 import android.util.Log
 import androidx.compose.ui.graphics.Color
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.olaz.instasprite.DrawingActivity
 import com.olaz.instasprite.data.model.ISpriteData
 import com.olaz.instasprite.data.repository.ColorPaletteRepository
 import com.olaz.instasprite.data.repository.ISpriteDatabaseRepository
@@ -14,7 +16,6 @@ import com.olaz.instasprite.data.repository.PixelCanvasRepository
 import com.olaz.instasprite.data.repository.StorageLocationRepository
 import com.olaz.instasprite.domain.canvashistory.CanvasHistoryManager
 import com.olaz.instasprite.domain.dialog.DialogController
-import com.olaz.instasprite.domain.dialog.DialogControllerImpl
 import com.olaz.instasprite.domain.tool.PencilTool
 import com.olaz.instasprite.domain.tool.Tool
 import com.olaz.instasprite.domain.usecase.LoadFileUseCase
@@ -26,6 +27,7 @@ import com.olaz.instasprite.ui.drawing.contract.ColorPaletteState
 import com.olaz.instasprite.ui.drawing.contract.PixelCanvasEvent
 import com.olaz.instasprite.ui.drawing.contract.PixelCanvasState
 import com.olaz.instasprite.ui.drawing.contract.ToolSelectorEvent
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -33,6 +35,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 
 data class DrawingScreenState(
@@ -40,17 +43,25 @@ data class DrawingScreenState(
     val toolSize: Int,
 )
 
-class DrawingViewModel(
-    private val spriteId: String,
+@HiltViewModel
+class DrawingViewModel @Inject constructor(
+    savedStateHandle: SavedStateHandle,
     private val storageLocationRepository: StorageLocationRepository,
     private val pixelCanvasRepository: PixelCanvasRepository,
     private val spriteDataRepository: ISpriteDatabaseRepository,
     private val colorPaletteRepository: ColorPaletteRepository,
     private val lospecColorPaletteRepository: LospecColorPaletteRepository,
-    private val dialogController: DialogController<DrawingDialog> = DialogControllerImpl()
+    private val dialogController: DialogController<DrawingDialog>
 ) : ViewModel(),
     DialogController<DrawingDialog> by dialogController {
 
+
+    private val spriteId: String = checkNotNull(savedStateHandle[DrawingActivity.EXTRA_SPRITE_ID])
+    private val canvasWidth: Int =
+        savedStateHandle[DrawingActivity.EXTRA_CANVAS_WIDTH] ?: pixelCanvasRepository.width
+    private val canvasHeight: Int =
+        savedStateHandle[DrawingActivity.EXTRA_CANVAS_HEIGHT] ?: pixelCanvasRepository.height
+    private val spriteName: String? = savedStateHandle[DrawingActivity.EXTRA_SPRITE_NAME]
     private val canvasHistoryManager = CanvasHistoryManager<PixelCanvasState>()
     private val saveFileUseCase = SaveFileUseCase()
     private val loadFileUseCase = LoadFileUseCase()
@@ -102,6 +113,15 @@ class DrawingViewModel(
             recentColors = recentColors.value
         )
     )
+
+    init {
+        setCanvasSize(canvasWidth, canvasHeight)
+
+        viewModelScope.launch {
+            loadFromDB()
+            saveToDB(spriteName)
+        }
+    }
 
     fun onColorPaletteEvent(event: ColorPaletteEvent) {
         when (event) {

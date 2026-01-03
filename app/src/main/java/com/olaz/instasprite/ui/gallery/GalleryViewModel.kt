@@ -23,6 +23,7 @@ import com.olaz.instasprite.ui.gallery.contract.BottomBarEvent
 import com.olaz.instasprite.ui.gallery.contract.ImagePagerEvent
 import com.olaz.instasprite.ui.gallery.contract.SearchBarContract
 import com.olaz.instasprite.ui.gallery.contract.SpriteListEvent
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,6 +33,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 enum class SpriteListOrder {
     Name,
@@ -47,11 +49,12 @@ data class GalleryState(
     val showImagePager: Boolean = false
 )
 
-class GalleryViewModel(
+@HiltViewModel
+class GalleryViewModel @Inject constructor(
     private val spriteDatabaseRepository: ISpriteDatabaseRepository,
     private val sortSettingRepository: SortSettingRepository,
     private val storageLocationRepository: StorageLocationRepository,
-    private val dialogController: DialogController<GalleryDialog> = DialogControllerImpl()
+    private val dialogController: DialogController<GalleryDialog>
 ) : ViewModel(),
     DialogController<GalleryDialog> by dialogController {
     private val saveFileUseCase = SaveFileUseCase()

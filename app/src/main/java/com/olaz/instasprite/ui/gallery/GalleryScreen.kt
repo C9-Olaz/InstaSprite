@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -26,28 +27,41 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.olaz.instasprite.data.database.AppDatabase
-import com.olaz.instasprite.data.repository.ISpriteDatabaseRepository
-import com.olaz.instasprite.data.repository.SortSettingRepository
-import com.olaz.instasprite.data.repository.StorageLocationRepository
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import com.olaz.instasprite.data.model.ISpriteData
+import com.olaz.instasprite.data.model.ISpriteWithMetaData
+import com.olaz.instasprite.data.model.SpriteMetaData
 import com.olaz.instasprite.ui.components.composable.JumpToTopButton
 import com.olaz.instasprite.ui.gallery.component.HomeBottomBar
 import com.olaz.instasprite.ui.gallery.component.HomeFab
 import com.olaz.instasprite.ui.gallery.component.ImagePagerOverlay
 import com.olaz.instasprite.ui.gallery.component.SearchBar
 import com.olaz.instasprite.ui.gallery.component.SpriteList
+import com.olaz.instasprite.ui.gallery.contract.BottomBarEvent
+import com.olaz.instasprite.ui.gallery.contract.ImagePagerEvent
+import com.olaz.instasprite.ui.gallery.contract.SearchBarContract
+import com.olaz.instasprite.ui.gallery.contract.SpriteListEvent
 import com.olaz.instasprite.ui.theme.CatppuccinUI
 import com.olaz.instasprite.ui.theme.InstaSpriteTheme
 import com.olaz.instasprite.utils.UiUtils
 import kotlinx.coroutines.launch
-import kotlin.collections.indexOfFirst
+
+data class GalleryScreenEvent(
+    val onBottomBarEvent: (BottomBarEvent) -> Unit,
+    val onImagePagerEvent: (ImagePagerEvent) -> Unit,
+    val onSearchBarEvent: (SearchBarContract) -> Unit,
+    val onSpriteListEvent: (SpriteListEvent) -> Unit,
+    val onFabClick: () -> Unit
+)
 
 @Composable
-fun GalleryScreen(viewModel: GalleryViewModel) {
+fun GalleryScreen(
+    viewModel: GalleryViewModel = hiltViewModel()
+) {
     UiUtils.SetStatusBarColor(CatppuccinUI.TopBarColor)
     UiUtils.SetNavigationBarColor(CatppuccinUI.BottomBarColor)
 
@@ -60,7 +74,6 @@ fun GalleryScreen(viewModel: GalleryViewModel) {
     val scope = rememberCoroutineScope()
 
     val lazyListState = rememberLazyListState()
-    val firstItemVisible by remember { derivedStateOf { lazyListState.firstVisibleItemIndex > 0 } }
 
     LaunchedEffect(sprites, sortedSprites) {
         viewModel.lastEditedSpriteId?.let { editedId ->
@@ -106,6 +119,37 @@ fun GalleryScreen(viewModel: GalleryViewModel) {
 
     GalleryScreenDialogs(dialogState, viewModel)
 
+    val event = remember(viewModel) {
+        GalleryScreenEvent(
+            onBottomBarEvent = viewModel::onBottomBarEvent,
+            onImagePagerEvent = viewModel::onImagePagerEvent,
+            onSearchBarEvent = viewModel::onSearchBarEvent,
+            onSpriteListEvent = viewModel::onSpriteListEvent,
+            onFabClick = { viewModel.openDialog(GalleryDialog.CreateCanvas) }
+        )
+    }
+
+    GalleryScreenContent(
+        uiState = uiState,
+        lazyListState = lazyListState,
+        spriteList = sortedSprites,
+        searchQuery = searchQuery,
+        event = event
+    )
+}
+
+@Composable
+private fun GalleryScreenContent(
+    uiState: GalleryState,
+    lazyListState: LazyListState,
+    spriteList: List<ISpriteWithMetaData>,
+    searchQuery: String,
+    event: GalleryScreenEvent,
+) {
+
+    val firstItemVisible by remember { derivedStateOf { lazyListState.firstVisibleItemIndex > 0 } }
+
+
     Box {
         Scaffold(
             topBar = {
@@ -133,14 +177,14 @@ fun GalleryScreen(viewModel: GalleryViewModel) {
                         .height(56.dp)
                 ) {
                     SearchBar(
-                        onSearchBarEvent = viewModel::onSearchBarEvent,
+                        onSearchBarEvent = event.onSearchBarEvent,
                         searchQuery = searchQuery,
                     )
                 }
             },
             bottomBar = {
                 HomeBottomBar(
-                    onBottomBarEvent = viewModel::onBottomBarEvent,
+                    onBottomBarEvent = event.onBottomBarEvent,
                     lazyListState = lazyListState,
                     modifier = Modifier.height(56.dp)
                 )
@@ -155,8 +199,8 @@ fun GalleryScreen(viewModel: GalleryViewModel) {
                     .animateContentSize()
             ) {
                 SpriteList(
-                    onSpriteListEvent = viewModel::onSpriteListEvent,
-                    spriteList = sortedSprites,
+                    onSpriteListEvent = event.onSpriteListEvent,
+                    spriteList = spriteList,
                     lazyListState = lazyListState,
                     modifier = Modifier.padding(horizontal = 10.dp)
                 )
@@ -185,7 +229,7 @@ fun GalleryScreen(viewModel: GalleryViewModel) {
             contentAlignment = Alignment.Center,
         ) {
             HomeFab(
-                onClick = { viewModel.openDialog(GalleryDialog.CreateCanvas) },
+                onClick = event.onFabClick,
                 lazyListState = lazyListState
             )
         }
@@ -195,20 +239,50 @@ fun GalleryScreen(viewModel: GalleryViewModel) {
 @Preview
 @Composable
 private fun GalleryScreenPreview() {
-    val context = LocalContext.current
-    val database = AppDatabase.getInstance(context)
-    val spriteDataRepository =
-        ISpriteDatabaseRepository(database.spriteDataDao(), database.spriteMetaDataDao())
-    val sortSettingRepository = SortSettingRepository(context)
-    val storageLocationRepository = StorageLocationRepository(context)
-
-    val viewModel = GalleryViewModel(
-        spriteDatabaseRepository = spriteDataRepository,
-        sortSettingRepository = sortSettingRepository,
-        storageLocationRepository = storageLocationRepository
-    )
 
     InstaSpriteTheme {
-        GalleryScreen(viewModel)
+        GalleryScreenContent(
+            uiState = GalleryState(),
+            lazyListState = LazyListState(),
+            spriteList =
+                listOf(
+                    ISpriteWithMetaData(
+                        sprite = ISpriteData(
+                            id = "1",
+                            width = 16,
+                            height = 16,
+                            pixelsData = List(16 * 16) {
+                                CatppuccinUI.CurrentPalette.Flamingo.toArgb()
+                            }
+                        ),
+                        meta = SpriteMetaData(
+                            spriteId = "1",
+                            spriteName = "Test",
+                        )
+                    ),
+                    ISpriteWithMetaData(
+                        sprite = ISpriteData(
+                            id = "2",
+                            width = 16,
+                            height = 16,
+                            pixelsData = List(16 * 16) {
+                                CatppuccinUI.CurrentPalette.Lavender.toArgb()
+                            }
+                        ),
+                        meta = SpriteMetaData(
+                            spriteId = "2",
+                            spriteName = "Test",
+                        )
+                    )
+                ),
+            searchQuery = "",
+            event = GalleryScreenEvent(
+                onBottomBarEvent = {},
+                onImagePagerEvent = {},
+                onSearchBarEvent = {},
+                onSpriteListEvent = {},
+                onFabClick = {}
+            )
+        )
     }
 }
