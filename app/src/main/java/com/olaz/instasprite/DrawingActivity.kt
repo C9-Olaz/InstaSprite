@@ -3,64 +3,21 @@ package com.olaz.instasprite
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.lifecycle.lifecycleScope
-import com.olaz.instasprite.data.database.AppDatabase
-import com.olaz.instasprite.data.model.PixelCanvasModel
-import com.olaz.instasprite.data.repository.ColorPaletteRepository
-import com.olaz.instasprite.data.repository.ISpriteDatabaseRepository
-import com.olaz.instasprite.data.repository.LospecColorPaletteRepository
-import com.olaz.instasprite.data.repository.PixelCanvasRepository
-import com.olaz.instasprite.data.repository.StorageLocationRepository
-import com.olaz.instasprite.ui.screens.drawingscreen.DrawingScreen
-import com.olaz.instasprite.ui.screens.drawingscreen.DrawingScreenViewModel
+import com.olaz.instasprite.ui.drawing.DrawingScreen
+import com.olaz.instasprite.ui.drawing.DrawingViewModel
 import com.olaz.instasprite.ui.theme.InstaSpriteTheme
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
+@AndroidEntryPoint
 class DrawingActivity : ComponentActivity() {
 
-    private lateinit var viewModel: DrawingScreenViewModel
+    private val viewModel: DrawingViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        val display = window.windowManager.defaultDisplay
-        val modes = display.supportedModes
-        val highest = modes.maxByOrNull { it.refreshRate }
-
-        highest?.let {
-            val params = window.attributes
-            params.preferredDisplayModeId = it.modeId
-            window.attributes = params
-        }
-
-        val spriteId = intent?.getStringExtra(EXTRA_SPRITE_ID)
-        require(spriteId != "") { "Sprite ID must be passed to DrawingActivity" }
-
-        val spriteName = intent?.getStringExtra(EXTRA_SPRITE_NAME)
-        val canvasWidth = intent?.getIntExtra(EXTRA_CANVAS_WIDTH, 16) ?: 16
-        val canvasHeight = intent?.getIntExtra(EXTRA_CANVAS_HEIGHT, 16) ?: 16
-
-        val storageLocationRepository = StorageLocationRepository(applicationContext)
-        val pixelCanvasRepository = PixelCanvasRepository(PixelCanvasModel(canvasWidth, canvasHeight))
-
-        val database = AppDatabase.getInstance(applicationContext)
-        val spriteDataRepository = ISpriteDatabaseRepository(database.spriteDataDao(), database.spriteMetaDataDao())
-
-        val colorPaletteRepository = ColorPaletteRepository(applicationContext)
-        val lospecColorPaletteRepository = LospecColorPaletteRepository(applicationContext)
-
-        viewModel = DrawingScreenViewModel(
-            spriteId = spriteId!!,
-            storageLocationRepository = storageLocationRepository,
-            pixelCanvasRepository = pixelCanvasRepository,
-            spriteDataRepository = spriteDataRepository,
-            colorPaletteRepository = colorPaletteRepository,
-            lospecColorPaletteRepository = lospecColorPaletteRepository,
-        )
-
-        lifecycleScope.launch {
-            viewModel.loadFromDB()
-            viewModel.saveToDB(spriteName)
-        }
 
         setContent {
             InstaSpriteTheme {
